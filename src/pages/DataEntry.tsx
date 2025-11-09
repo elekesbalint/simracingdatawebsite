@@ -21,7 +21,11 @@ const DataEntry: React.FC = () => {
   const navigate = useNavigate()
   const { trackData, updateTrack, loading: trackLoading } = useTrackData()
   const [activeTab, setActiveTab] = useState<'tire' | 'strategy' | 'lap'>('tire')
-  
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  )
+  const [savingForm, setSavingForm] = useState<'tire' | 'strategy' | 'lap' | null>(null)
+
   // Form states
   const [selectedTrack, setSelectedTrack] = useState('')
   const initialTireForm = {
@@ -91,11 +95,25 @@ const DataEntry: React.FC = () => {
       }
     ]
 
-    await updateTrack(selectedTrack, (current) => ({
-      ...current,
-      tireData: newTireData,
-      lastUpdated: new Date()
-    }))
+    setFeedback(null)
+    setSavingForm('tire')
+
+    try {
+      await updateTrack(selectedTrack, (current) => ({
+        ...current,
+        tireData: newTireData,
+        lastUpdated: new Date()
+      }))
+      setFeedback({ type: 'success', message: 'Gumikopás adatok sikeresen mentve.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült menteni a gumikopás adatokat.'
+      })
+    } finally {
+      setSavingForm(null)
+    }
   }
 
   const handleStrategySubmit = async (e: React.FormEvent) => {
@@ -116,22 +134,37 @@ const DataEntry: React.FC = () => {
       createdAt: new Date()
     }
 
-    await updateTrack(selectedTrack, (current) => ({
-      ...current,
-      strategies: [...current.strategies, newStrategy],
-      lastUpdated: new Date()
-    }))
+    setFeedback(null)
+    setSavingForm('strategy')
 
-    setStrategyForm({
-      undercut: '',
-      ideal: '',
-      overcut: '',
-      undercutStrength: '',
-      pitStop: '',
-      ers: '',
-      optimalSectors: '',
-      notes: ''
-    })
+    try {
+      await updateTrack(selectedTrack, (current) => ({
+        ...current,
+        strategies: [...current.strategies, newStrategy],
+        lastUpdated: new Date()
+      }))
+
+      setStrategyForm({
+        undercut: '',
+        ideal: '',
+        overcut: '',
+        undercutStrength: '',
+        pitStop: '',
+        ers: '',
+        optimalSectors: '',
+        notes: ''
+      })
+
+      setFeedback({ type: 'success', message: 'Stratégia sikeresen hozzáadva.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült menteni a stratégiát. Próbáld újra.'
+      })
+    } finally {
+      setSavingForm(null)
+    }
   }
 
   const handleLapSubmit = async (e: React.FormEvent) => {
@@ -144,13 +177,30 @@ const DataEntry: React.FC = () => {
     const bestLapValue = Number.isNaN(bestLapValueRaw) ? undefined : bestLapValueRaw
     const averageLapValue = Number.isNaN(averageLapValueRaw) ? undefined : averageLapValueRaw
 
-    await updateTrack(selectedTrack, (current) => ({
-      ...current,
-      bestLap: bestLapValue ?? current.bestLap,
-      averageLap: averageLapValue ?? current.averageLap,
-      notes: lapForm.notes || current.notes,
-      lastUpdated: new Date()
-    }))
+    setFeedback(null)
+    setSavingForm('lap')
+
+    try {
+      await updateTrack(selectedTrack, (current) => ({
+        ...current,
+        bestLap: bestLapValue ?? current.bestLap,
+        averageLap: averageLapValue ?? current.averageLap,
+        notes: lapForm.notes || current.notes,
+        lastUpdated: new Date()
+      }))
+
+      setFeedback({ type: 'success', message: 'Kör információk sikeresen mentve.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Nem sikerült menteni a kör információkat. Próbáld újra.'
+      })
+    } finally {
+      setSavingForm(null)
+    }
   }
 
   useEffect(() => {
@@ -190,6 +240,10 @@ const DataEntry: React.FC = () => {
       notes: entry.notes ?? ''
     })
   }, [selectedTrack, trackData])
+
+  useEffect(() => {
+    setFeedback(null)
+  }, [selectedTrack])
 
   const tabs = [
     { id: 'tire', label: 'Gumikopás adatok', icon: Thermometer },
@@ -260,6 +314,18 @@ const DataEntry: React.FC = () => {
             </nav>
           </div>
 
+          {feedback && (
+            <div
+              className={`rounded-lg px-4 py-3 text-sm ${
+                feedback.type === 'success'
+                  ? 'border border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
+                  : 'border border-f1-red/40 bg-f1-red/10 text-f1-red'
+              }`}
+            >
+              {feedback.message}
+            </div>
+          )}
+
           {/* Tab Content */}
           <div className="space-y-6">
             {activeTab === 'tire' && (
@@ -308,7 +374,7 @@ const DataEntry: React.FC = () => {
                     <Button type="button" variant="outline" onClick={() => navigate('/')}>
                       Mégse
                     </Button>
-                    <Button type="submit">
+                    <Button type="submit" disabled={savingForm === 'tire'}>
                       <Save className="h-4 w-4 mr-2" />
                       Mentés
                     </Button>
@@ -387,7 +453,7 @@ const DataEntry: React.FC = () => {
                     <Button type="button" variant="outline" onClick={() => navigate('/')}>
                       Mégse
                     </Button>
-                    <Button type="submit">
+                    <Button type="submit" disabled={savingForm === 'strategy'}>
                       <Save className="h-4 w-4 mr-2" />
                       Mentés
                     </Button>
@@ -432,7 +498,7 @@ const DataEntry: React.FC = () => {
                     <Button type="button" variant="outline" onClick={() => navigate('/')}>
                       Mégse
                     </Button>
-                    <Button type="submit">
+                    <Button type="submit" disabled={savingForm === 'lap'}>
                       <Save className="h-4 w-4 mr-2" />
                       Mentés
                     </Button>

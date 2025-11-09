@@ -197,26 +197,56 @@ export const TrackDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const updateTrack = useCallback<TrackDataContextValue['updateTrack']>(
     async (trackId, updater) => {
       let nextRecord: TrackData | null = null
+      let previousRecord: TrackData | null = null
+      let insertedNewRecord = false
+
       setTrackData((prev) => {
-        const current = prev.find((item) => item.trackId === trackId) ?? defaultTrackDataMap.get(trackId)!
+        const existingIndex = prev.findIndex((item) => item.trackId === trackId)
+        const current = existingIndex !== -1 ? prev[existingIndex] : defaultTrackDataMap.get(trackId)!
+
+        previousRecord = existingIndex !== -1 ? prev[existingIndex] : null
+
         const updatedDraft = updater({ ...current, lastUpdated: new Date() })
         nextRecord = normalizeTrackData({ ...updatedDraft, trackId, lastUpdated: new Date() })
 
-        const exists = prev.some((item) => item.trackId === trackId)
-        if (exists) {
-          return prev.map((item) => (item.trackId === trackId ? nextRecord! : item))
+        if (existingIndex !== -1) {
+          return prev.map((item, index) => (index === existingIndex ? nextRecord! : item))
         }
+
+        insertedNewRecord = true
         return [...prev, nextRecord!]
       })
 
-      if (nextRecord && isSupabaseConfigured) {
-        await supabase
+      if (!nextRecord) {
+        return
+      }
+
+      if (isSupabaseConfigured) {
+        const { error } = await supabase
           .from('track_data')
           .upsert({
             track_id: trackId,
             payload: serializeTrackData(nextRecord),
             updated_at: new Date().toISOString()
           })
+
+        if (error) {
+          console.error('Supabase track data update failed:', error.message)
+
+          setTrackData((prev) => {
+            if (insertedNewRecord) {
+              return prev.filter((item) => item.trackId !== trackId)
+            }
+
+            if (previousRecord) {
+              return prev.map((item) => (item.trackId === trackId ? previousRecord! : item))
+            }
+
+            return prev
+          })
+
+          throw new Error('Nem sikerült menteni a pálya adatait. Próbáld újra később.')
+        }
       }
     },
     []
