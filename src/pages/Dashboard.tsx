@@ -221,7 +221,7 @@ const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <Card className="slide-up hover:border-f1-gold/50 hover:shadow-f1-gold/20">
         <h2 className="text-2xl font-bold gradient-text-gold mb-6">Gyors műveletek</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link to="/data-entry">
             <div className="p-6 bg-f1-dark rounded-lg hover:bg-f1-light-gray transition-all duration-300 cursor-pointer group hover:border-f1-gold/30 hover:shadow-f1-gold/10 relative overflow-hidden">
               <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -252,18 +252,6 @@ const Dashboard: React.FC = () => {
             </div>
           </Link>
 
-          <div className="p-6 bg-f1-dark rounded-lg hover:bg-f1-light-gray transition-all duration-300 cursor-pointer group hover:border-f1-gold/30 hover:shadow-f1-gold/10 relative overflow-hidden">
-            <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="relative z-10 flex items-center space-x-4">
-              <div className="p-3 bg-green-500 bg-opacity-20 rounded-lg group-hover:bg-opacity-30 transition-all group-hover:scale-110">
-                <Clock className="h-6 w-6 text-green-500 group-hover:text-f1-gold transition-colors duration-300" />
-              </div>
-              <div>
-                <h3 className="font-medium text-f1-text group-hover:text-f1-gold transition-colors duration-300">Következő edzés tervezése</h3>
-                <p className="text-sm text-f1-text-secondary group-hover:text-f1-text transition-colors duration-300">Hatékony program egy gombnyomásra</p>
-              </div>
-            </div>
-          </div>
         </div>
       </Card>
     </div>
