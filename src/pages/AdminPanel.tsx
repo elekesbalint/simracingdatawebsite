@@ -29,17 +29,23 @@ const AdminPanel: React.FC = () => {
     setUpdatingUserId(userId)
     try {
       const result = await approveUserWithTwoFactor(userId)
+      console.log('Approve result:', result) // DEBUG
       if (!result.success) {
         setErrorMessage(result.message ?? 'Nem sikerült jóváhagyni a felhasználót.')
       } else if (result.secret && result.qrCode && result.userEmail && result.userName) {
+        console.log('Setting 2FA modal with:', result) // DEBUG
         setTwoFactorModal({
           userName: result.userName,
           userEmail: result.userEmail,
           secret: result.secret,
           qrCode: result.qrCode
         })
+      } else {
+        console.warn('Missing data in result:', result) // DEBUG
+        setErrorMessage('Jóváhagyás sikeres, de a 2FA adatok hiányoznak.')
       }
     } catch (error) {
+      console.error('Approve error:', error) // DEBUG
       setErrorMessage(
         error instanceof Error ? error.message : 'Nem sikerült jóváhagyni a felhasználót.'
       )
