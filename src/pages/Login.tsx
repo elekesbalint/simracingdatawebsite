@@ -48,8 +48,13 @@ const Login: React.FC = () => {
         setError(result.message ?? 'Sikertelen bejelentkezés.')
       }
     } else {
-      const from = location.state?.from
-      navigate(from?.pathname || '/', { replace: true })
+      // Check if user needs to set up 2FA
+      if ((result as any).requiresSetup) {
+        navigate('/account', { replace: true })
+      } else {
+        const from = location.state?.from
+        navigate(from?.pathname || '/', { replace: true })
+      }
     }
 
     setIsSubmitting(false)

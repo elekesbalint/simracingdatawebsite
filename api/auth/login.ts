@@ -22,7 +22,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     const normalizedEmail = String(email).trim().toLowerCase()
 
     const { data, error } = await supabaseAdmin
-      .from<AuthUserRecord>('auth_users')
+      .from('auth_users')
       .select('*')
       .eq('email', normalizedEmail)
       .maybeSingle()
@@ -38,6 +38,12 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       return
     }
 
+    // Check if user is approved
+    if (data.status !== 'approved') {
+      res.status(403).json({ success: false, message: 'A fiókodat még nem hagyták jóvá.' })
+      return
+    }
+
     // Handle 2FA
     let totpSecret: string | null = null
     try {
@@ -49,38 +55,49 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     
     const twoFactorEnabled = Boolean(data.two_factor_enabled && totpSecret)
 
-    if (twoFactorEnabled) {
-      if (!token) {
-        res.status(200).json({
-          success: false,
-          requiresTwoFactor: true,
-          userId: data.id,
-          message: 'Add meg a 2FA kódot.'
-        })
-        return
-      }
-
-      const verified = authenticator.verify({
-        token: String(token),
-        secret: totpSecret!
+    // If 2FA is not set up, allow login but flag for setup
+    if (!twoFactorEnabled) {
+      res.status(200).json({
+        success: true,
+        requiresTwoFactor: false,
+        user: sanitizeUser(data),
+        twoFactorEnabled: false,
+        requiresSetup: true
       })
+      return
+    }
 
-      if (!verified) {
-        res.status(401).json({
-          success: false,
-          requiresTwoFactor: true,
-          userId: data.id,
-          message: 'Érvénytelen 2FA kód.'
-        })
-        return
-      }
+    // If 2FA is enabled, require token
+    if (!token) {
+      res.status(200).json({
+        success: false,
+        requiresTwoFactor: true,
+        userId: data.id,
+        message: 'Add meg a 2FA kódot.'
+      })
+      return
+    }
+
+    const verified = authenticator.verify({
+      token: String(token),
+      secret: totpSecret!
+    })
+
+    if (!verified) {
+      res.status(401).json({
+        success: false,
+        requiresTwoFactor: true,
+        userId: data.id,
+        message: 'Érvénytelen 2FA kód.'
+      })
+      return
     }
 
     res.status(200).json({
       success: true,
       requiresTwoFactor: false,
       user: sanitizeUser(data),
-      twoFactorEnabled
+      twoFactorEnabled: true
     })
   } catch (err) {
     console.error('Login error:', err)
