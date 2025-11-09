@@ -8,8 +8,7 @@ const AccountSettings: React.FC = () => {
   const {
     currentUser,
     generateTwoFactorSetup,
-    confirmTwoFactor,
-    disableTwoFactor
+    confirmTwoFactor
   } = useAuth()
 
   const [password, setPassword] = useState('')
@@ -19,7 +18,6 @@ const AccountSettings: React.FC = () => {
     qrCode: string
   } | null>(null)
   const [verificationCode, setVerificationCode] = useState('')
-  const [disableToken, setDisableToken] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
@@ -72,24 +70,6 @@ const AccountSettings: React.FC = () => {
     setIsLoading(false)
   }
 
-  const handleDisable = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!password.trim()) {
-      setFeedback({ type: 'error', message: 'Add meg a jelszavad.' })
-      return
-    }
-
-    setIsLoading(true)
-    const result = await disableTwoFactor(password.trim(), disableToken.trim() || undefined)
-    if (!result.success) {
-      setFeedback({ type: 'error', message: result.message ?? 'Nem sikerült kikapcsolni a 2FA-t.' })
-    } else {
-      setFeedback({ type: 'success', message: 'A 2FA kikapcsolva.' })
-      setPassword('')
-      setDisableToken('')
-    }
-    setIsLoading(false)
-  }
 
   const twoFactorEnabled = Boolean(currentUser?.twoFactorEnabled)
 
@@ -119,17 +99,17 @@ const AccountSettings: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold text-f1-text">Kétlépcsős hitelesítés (2FA)</h2>
             <p className="text-sm text-f1-text-secondary">
-              Növeld a fiókod védelmét authenticator alkalmazással.
+              A 2FA kötelező minden felhasználó számára a biztonság érdekében.
             </p>
           </div>
           <span
             className={`px-3 py-1 rounded-full text-xs font-semibold ${
               twoFactorEnabled
                 ? 'bg-emerald-400/10 border border-emerald-400/40 text-emerald-300'
-                : 'bg-f1-red/10 border border-f1-red/40 text-f1-red'
+                : 'bg-orange-400/10 border border-orange-400/40 text-orange-300'
             }`}
           >
-            {twoFactorEnabled ? 'Engedélyezve' : 'Kikapcsolva'}
+            {twoFactorEnabled ? 'Aktív' : 'Beállítás szükséges'}
           </span>
         </div>
 
@@ -198,31 +178,11 @@ const AccountSettings: React.FC = () => {
         )}
 
         {twoFactorEnabled && (
-          <form className="space-y-4" onSubmit={handleDisable}>
-            <p className="text-sm text-f1-text-secondary">
-              2FA kikapcsolásához add meg a jelszavad. Opcionálisan megadhatod a jelenlegi 2FA kódot
-              további biztonság érdekében.
-            </p>
-            <Input
-              label="Jelszó"
-              type="password"
-              value={password}
-              onChange={setPassword}
-              placeholder="Add meg a jelszavad"
-              required
-            />
-            <Input
-              label="Aktuális 2FA kód (opcionális)"
-              value={disableToken}
-              onChange={setDisableToken}
-              placeholder="••••••"
-            />
-            <div className="flex justify-end">
-              <Button type="submit" variant="outline" disabled={isLoading}>
-                {isLoading ? 'Kikapcsolás...' : '2FA kikapcsolása'}
-              </Button>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+              ✓ A kétlépcsős hitelesítés aktív és védelmezi a fiókodat. A 2FA kikapcsolása biztonsági okokból nem lehetséges.
             </div>
-          </form>
+          </div>
         )}
       </Card>
     </div>
