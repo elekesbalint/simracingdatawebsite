@@ -745,6 +745,50 @@ const TrackDetails: React.FC = () => {
           )}
         </Card>
       </section>
+
+      <Card className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-f1-text">Mentett setupok</h3>
+          <Link to={`/hotlaps/${trackId}`}>
+            <Button variant="gold" size="sm">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Setup hozzáadása
+            </Button>
+          </Link>
+        </div>
+
+        {setups.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {setups.map((setup) => (
+              <div
+                key={setup.id}
+                className="rounded-xl border border-f1-light-gray/40 bg-f1-dark/60 p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <h4 className="text-lg font-semibold text-f1-text">{setup.title || 'Setup'}</h4>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <p className="text-f1-text-secondary font-mono text-xs">{setup.configuration}</p>
+                  
+                  {setup.notes && (
+                    <p className="text-f1-text-secondary text-xs">{setup.notes}</p>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-xs text-f1-text-secondary">
+                    <span>Mentve: {new Date(setup.createdAt).toLocaleDateString('hu-HU')}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-f1-text-secondary">
+            Még nincs mentett setup ehhez a pályához. Rögzítsd az első setupot a Hotlaps & Setups
+            oldalon!
+          </p>
+        )}
+      </Card>
     </div>
   )
 }
