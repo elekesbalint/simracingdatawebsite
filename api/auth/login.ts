@@ -55,14 +55,23 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     
     const twoFactorEnabled = Boolean(data.two_factor_enabled && totpSecret)
 
-    // If 2FA is not set up, allow login but flag for setup
+    // If 2FA is not set up
     if (!twoFactorEnabled) {
-      res.status(200).json({
-        success: true,
-        requiresTwoFactor: false,
-        user: sanitizeUser(data),
-        twoFactorEnabled: false,
-        requiresSetup: true
+      // Admin can login without 2FA
+      if (data.role === 'admin') {
+        res.status(200).json({
+          success: true,
+          requiresTwoFactor: false,
+          user: sanitizeUser(data),
+          twoFactorEnabled: false
+        })
+        return
+      }
+      
+      // Regular users cannot login without 2FA
+      res.status(403).json({
+        success: false,
+        message: 'A 2FA beállítása kötelező. Kérj segítséget az adminisztrátortól.'
       })
       return
     }
