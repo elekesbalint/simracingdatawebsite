@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabaseAdmin } from '../_lib/supabase'
-import { sanitizeUser, type AuthUserRecord } from '../_lib/users'
-import { decrypt } from '../_lib/crypto'
+import { supabaseAdmin } from '../_lib/supabase.js'
+import { sanitizeUser, type AuthUserRecord } from '../_lib/users.js'
+import { decrypt } from '../_lib/crypto.js'
 import { authenticator } from 'otplib'
 import { compare as bcryptCompare } from 'bcryptjs'
 

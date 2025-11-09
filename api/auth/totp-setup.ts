@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabaseAdmin } from '../_lib/supabase'
-import { encrypt } from '../_lib/crypto'
+import { supabaseAdmin } from '../_lib/supabase.js'
+import { encrypt } from '../_lib/crypto.js'
 import { authenticator } from 'otplib'
 import QRCode from 'qrcode'
 import { compare as bcryptCompare } from 'bcryptjs'
-import type { AuthUserRecord } from '../_lib/users'
+import type { AuthUserRecord } from '../_lib/users.js'
 
 const ISSUER = 'SimRacing Operations Hub'
 

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabaseAdmin } from '../_lib/supabase'
-import { decrypt } from '../_lib/crypto'
+import { supabaseAdmin } from '../_lib/supabase.js'
+import { decrypt } from '../_lib/crypto.js'
 import { authenticator } from 'otplib'
 import { compare as bcryptCompare } from 'bcryptjs'
-import type { AuthUserRecord } from '../_lib/users'
+import type { AuthUserRecord } from '../_lib/users.js'
 
 const handler = async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== 'POST') {
