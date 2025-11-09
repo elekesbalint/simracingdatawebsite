@@ -5,9 +5,15 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import { useAuth } from '../context/AuthContext'
 
 const AdminPanel: React.FC = () => {
-  const { users, approveUser, rejectUser, currentUser, loading } = useAuth()
+  const { users, approveUserWithTwoFactor, rejectUser, currentUser, loading } = useAuth()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
+  const [twoFactorModal, setTwoFactorModal] = useState<{
+    userName: string
+    userEmail: string
+    secret: string
+    qrCode: string
+  } | null>(null)
 
   const { pending, approved, rejected } = useMemo(() => {
     const withoutSelf = users.filter((user) => user.id !== currentUser?.id)
@@ -22,7 +28,17 @@ const AdminPanel: React.FC = () => {
     setErrorMessage(null)
     setUpdatingUserId(userId)
     try {
-      await approveUser(userId)
+      const result = await approveUserWithTwoFactor(userId)
+      if (!result.success) {
+        setErrorMessage(result.message ?? 'Nem sikerült jóváhagyni a felhasználót.')
+      } else if (result.secret && result.qrCode && result.userEmail && result.userName) {
+        setTwoFactorModal({
+          userName: result.userName,
+          userEmail: result.userEmail,
+          secret: result.secret,
+          qrCode: result.qrCode
+        })
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Nem sikerült jóváhagyni a felhasználót.'
@@ -55,14 +71,72 @@ const AdminPanel: React.FC = () => {
   }
 
   return (
-    <div className="space-y-10 fade-in">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold gradient-text-gold">Admin panel</h1>
-        <p className="text-f1-text-secondary max-w-3xl">
-          Kezeld a regisztrációs kérelmeket és tartsd karban a pilóta fiókokat. Csak az elfogadott
-          felhasználók tudnak bejelentkezni.
-        </p>
-      </header>
+    <>
+      {twoFactorModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-2xl w-full space-y-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-f1-text">Felhasználó jóváhagyva</h2>
+                <p className="text-sm text-f1-text-secondary mt-1">
+                  {twoFactorModal.userName} ({twoFactorModal.userEmail})
+                </p>
+              </div>
+              <button
+                onClick={() => setTwoFactorModal(null)}
+                className="text-f1-text-secondary hover:text-f1-text transition-colors"
+              >
+                <span className="text-2xl">×</span>
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+              ✓ A 2FA automatikusan be lett állítva. Küldd el az alábbi adatokat a felhasználónak.
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <p className="text-sm text-f1-text font-semibold">QR kód</p>
+                <div className="rounded-xl border border-f1-light-gray/40 bg-black/30 p-4 flex items-center justify-center">
+                  <img src={twoFactorModal.qrCode} alt="2FA QR" className="w-64 h-64" />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-f1-text-secondary mb-2">
+                    Manuális kulcs
+                  </p>
+                  <p className="font-mono text-f1-text text-sm break-all bg-f1-dark/80 border border-f1-light-gray/40 rounded-lg px-3 py-2">
+                    {twoFactorModal.secret}
+                  </p>
+                </div>
+                <div className="text-sm text-f1-text-secondary space-y-2">
+                  <p>
+                    A felhasználó bejelentkezéskor a jelszava mellett meg kell adnia a hitelesítő
+                    alkalmazásból származó 6 számjegyű kódot.
+                  </p>
+                  <p>Ajánlott alkalmazások: Google Authenticator, Microsoft Authenticator.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="gold" onClick={() => setTwoFactorModal(null)}>
+                Bezárás
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <div className="space-y-10 fade-in">
+        <header className="space-y-2">
+          <h1 className="text-3xl font-bold gradient-text-gold">Admin panel</h1>
+          <p className="text-f1-text-secondary max-w-3xl">
+            Kezeld a regisztrációs kérelmeket és tartsd karban a pilóta fiókokat. Csak az elfogadott
+            felhasználók tudnak bejelentkezni.
+          </p>
+        </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="space-y-2">
@@ -169,7 +243,8 @@ const AdminPanel: React.FC = () => {
           )}
         </Card>
       </section>
-    </div>
+      </div>
+    </>
   )
 }
 

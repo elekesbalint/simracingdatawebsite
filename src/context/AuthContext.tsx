@@ -25,6 +25,14 @@ interface AuthContextValue {
   disableTwoFactor: (password: string, token?: string) => Promise<{ success: boolean; message?: string }>
   logout: () => void
   approveUser: (userId: string) => Promise<void>
+  approveUserWithTwoFactor: (userId: string) => Promise<{
+    success: boolean
+    secret?: string
+    qrCode?: string
+    userEmail?: string
+    userName?: string
+    message?: string
+  }>
   rejectUser: (userId: string) => Promise<void>
   refreshUsers: () => Promise<void>
 }
@@ -472,6 +480,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [updateUserStatus]
   )
 
+  const approveUserWithTwoFactor = useCallback<AuthContextValue['approveUserWithTwoFactor']>(
+    async (userId) => {
+      if (!isSupabaseConfigured || !currentUser) {
+        return { success: false, message: 'Nincs jogosultság.' }
+      }
+
+      try {
+        const response = await fetch('/api/auth/admin-approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            adminId: currentUser.id
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          return { success: false, message: result.message ?? 'Nem sikerült jóváhagyni.' }
+        }
+
+        await loadUsers()
+
+        return {
+          success: true,
+          secret: result.secret,
+          qrCode: result.qrCode,
+          userEmail: result.userEmail,
+          userName: result.userName
+        }
+      } catch (err) {
+        console.error('Approve with 2FA error:', err)
+        return { success: false, message: 'Szerverhiba történt.' }
+      }
+    },
+    [isSupabaseConfigured, currentUser, loadUsers]
+  )
+
   const rejectUser = useCallback<AuthContextValue['rejectUser']>(
     async (userId) => {
       await updateUserStatus(userId, 'rejected')
@@ -494,6 +541,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     disableTwoFactor,
     logout,
     approveUser,
+    approveUserWithTwoFactor,
     rejectUser,
     refreshUsers: loadUsers
   }
