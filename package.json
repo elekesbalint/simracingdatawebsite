@@ -1,6 +1,7 @@
 {
   "name": "f1-data-manager",
   "version": "1.0.0",
+  "type": "module",
   "description": "F1 2025 Data Management System",
   "private": true,
   "dependencies": {
