@@ -22,6 +22,7 @@ import { Track, Strategy, TireData, HotlapEntry } from '../types'
 import TrackMapImage from '../components/TrackMapImage'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useTrackData } from '../context/TrackDataContext'
+import Input from '../components/Input'
 
 const TrackDetails: React.FC = () => {
   const { trackId } = useParams<{ trackId: string }>()
@@ -94,6 +95,22 @@ const TrackDetails: React.FC = () => {
     )
   }
 
+  const [editingStrategyId, setEditingStrategyId] = useState<string | null>(null)
+  const [strategyDraft, setStrategyDraft] = useState({
+    undercut: '',
+    ideal: '',
+    overcut: '',
+    undercutStrength: '',
+    pitStop: '',
+    ers: '',
+    optimalSectors: '',
+    notes: ''
+  })
+  const [savingStrategyId, setSavingStrategyId] = useState<string | null>(null)
+  const [strategyFeedback, setStrategyFeedback] = useState<
+    { type: 'success' | 'error'; message: string } | null
+  >(null)
+
   const handleAddStrategy = async () => {
     if (!trackId || !track) return
 
@@ -128,6 +145,84 @@ const TrackDetails: React.FC = () => {
       lastUpdated: new Date()
     }))
   }
+
+  const beginEditStrategy = (strategy: Strategy) => {
+    setStrategyFeedback(null)
+    setEditingStrategyId(strategy.id)
+    setStrategyDraft({
+      undercut: strategy.undercut,
+      ideal: strategy.ideal,
+      overcut: strategy.overcut,
+      undercutStrength: strategy.undercutStrength,
+      pitStop: strategy.pitStop,
+      ers: strategy.ers,
+      optimalSectors: strategy.optimalSectors,
+      notes: strategy.notes ?? ''
+    })
+  }
+
+  const cancelEditStrategy = (preserveFeedback = false) => {
+    if (!preserveFeedback) {
+      setStrategyFeedback(null)
+    }
+    setEditingStrategyId(null)
+    setSavingStrategyId(null)
+    setStrategyDraft({
+      undercut: '',
+      ideal: '',
+      overcut: '',
+      undercutStrength: '',
+      pitStop: '',
+      ers: '',
+      optimalSectors: '',
+      notes: ''
+    })
+  }
+
+  const handleUpdateStrategy = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!track || !editingStrategyId) return
+
+    setStrategyFeedback(null)
+    setSavingStrategyId(editingStrategyId)
+
+    try {
+      await updateTrack(track.id, (current) => ({
+        ...current,
+        strategies: current.strategies.map((strategy) =>
+          strategy.id === editingStrategyId
+            ? {
+                ...strategy,
+                undercut: strategyDraft.undercut,
+                ideal: strategyDraft.ideal,
+                overcut: strategyDraft.overcut,
+                undercutStrength: strategyDraft.undercutStrength,
+                pitStop: strategyDraft.pitStop,
+                ers: strategyDraft.ers,
+                optimalSectors: strategyDraft.optimalSectors,
+                notes: strategyDraft.notes.trim() ? strategyDraft.notes.trim() : undefined
+              }
+            : strategy
+        ),
+        lastUpdated: new Date()
+      }))
+
+      setStrategyFeedback({ type: 'success', message: 'Stratégia sikeresen frissítve.' })
+      cancelEditStrategy(true)
+    } catch (error) {
+      setStrategyFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült frissíteni a stratégiát. Próbáld újra.'
+      })
+    } finally {
+      setSavingStrategyId(null)
+    }
+  }
+
+  useEffect(() => {
+    cancelEditStrategy()
+  }, [trackId])
 
   const compoundOptions: TireData['compoundSet'][] = Array.from(
     new Set<TireData['compoundSet']>(
@@ -322,6 +417,18 @@ const TrackDetails: React.FC = () => {
             </Button>
           </div>
 
+          {strategyFeedback && (
+            <div
+              className={`rounded-lg px-4 py-3 text-sm ${
+                strategyFeedback.type === 'success'
+                  ? 'border border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
+                  : 'border border-f1-red/40 bg-f1-red/10 text-f1-red'
+              }`}
+            >
+              {strategyFeedback.message}
+            </div>
+          )}
+
           {strategies.length === 0 ? (
             <div className="text-center py-10 text-f1-text-secondary">
               <Target className="h-10 w-10 mx-auto mb-3" />
@@ -339,48 +446,149 @@ const TrackDetails: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => beginEditStrategy(strategy)}
+                        disabled={savingStrategyId !== null && savingStrategyId !== strategy.id}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDeleteStrategy(strategy.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteStrategy(strategy.id)}
+                        disabled={savingStrategyId === strategy.id}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">Undercut</span>
-                      <p className="text-f1-text font-semibold">{strategy.undercut}</p>
-                    </div>
-                    <div>
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">Ideal</span>
-                      <p className="text-f1-text font-semibold">{strategy.ideal}</p>
-                    </div>
-                    <div>
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">Overcut</span>
-                      <p className="text-f1-text font-semibold">{strategy.overcut}</p>
-                    </div>
-                    <div>
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">Undercut erőssége</span>
-                      <p className="text-f1-text font-semibold">{strategy.undercutStrength}</p>
-                    </div>
-                    <div>
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">Pit stop</span>
-                      <p className="text-f1-text font-semibold">{strategy.pitStop}</p>
-                    </div>
-                    <div>
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">ERS</span>
-                      <p className="text-f1-text font-semibold">{strategy.ers}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <span className="text-f1-text-secondary uppercase text-xs tracking-wide">Optimális szektorok</span>
-                      <p className="text-f1-text font-semibold">{strategy.optimalSectors}</p>
-                    </div>
-                  </div>
+                  {editingStrategyId === strategy.id ? (
+                    <form className="space-y-4" onSubmit={handleUpdateStrategy}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <Input
+                          label="Undercut"
+                          value={strategyDraft.undercut}
+                          onChange={(value) => setStrategyDraft((draft) => ({ ...draft, undercut: value }))}
+                          required
+                        />
+                        <Input
+                          label="Ideal"
+                          value={strategyDraft.ideal}
+                          onChange={(value) => setStrategyDraft((draft) => ({ ...draft, ideal: value }))}
+                          required
+                        />
+                        <Input
+                          label="Overcut"
+                          value={strategyDraft.overcut}
+                          onChange={(value) => setStrategyDraft((draft) => ({ ...draft, overcut: value }))}
+                          required
+                        />
+                        <Input
+                          label="Undercut erőssége"
+                          value={strategyDraft.undercutStrength}
+                          onChange={(value) =>
+                            setStrategyDraft((draft) => ({ ...draft, undercutStrength: value }))
+                          }
+                        />
+                        <Input
+                          label="Pit stop"
+                          value={strategyDraft.pitStop}
+                          onChange={(value) => setStrategyDraft((draft) => ({ ...draft, pitStop: value }))}
+                        />
+                        <Input
+                          label="ERS"
+                          value={strategyDraft.ers}
+                          onChange={(value) => setStrategyDraft((draft) => ({ ...draft, ers: value }))}
+                        />
+                        <Input
+                          label="Optimális szektorok"
+                          value={strategyDraft.optimalSectors}
+                          onChange={(value) =>
+                            setStrategyDraft((draft) => ({ ...draft, optimalSectors: value }))
+                          }
+                        />
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-f1-text mb-1">
+                            Megjegyzések
+                          </label>
+                          <textarea
+                            className="input-field w-full min-h-[80px]"
+                            value={strategyDraft.notes}
+                            onChange={(event) =>
+                              setStrategyDraft((draft) => ({ ...draft, notes: event.target.value }))
+                            }
+                            placeholder="További megjegyzések..."
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelEditStrategy}
+                          disabled={savingStrategyId === strategy.id}
+                        >
+                          Mégse
+                        </Button>
+                        <Button type="submit" variant="gold" disabled={savingStrategyId === strategy.id}>
+                          Mentés
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            Undercut
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.undercut}</p>
+                        </div>
+                        <div>
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            Ideal
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.ideal}</p>
+                        </div>
+                        <div>
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            Overcut
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.overcut}</p>
+                        </div>
+                        <div>
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            Undercut erőssége
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.undercutStrength}</p>
+                        </div>
+                        <div>
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            Pit stop
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.pitStop}</p>
+                        </div>
+                        <div>
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            ERS
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.ers}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <span className="text-f1-text-secondary uppercase text-xs tracking-wide">
+                            Optimális szektorok
+                          </span>
+                          <p className="text-f1-text font-semibold">{strategy.optimalSectors}</p>
+                        </div>
+                      </div>
 
-                  {strategy.notes && (
-                    <p className="text-sm text-f1-text-secondary">{strategy.notes}</p>
+                      {strategy.notes && (
+                        <p className="text-sm text-f1-text-secondary">{strategy.notes}</p>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
