@@ -13,7 +13,7 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import Select from '../components/Select'
 import { f1Tracks } from '../data/tracks'
-import { TrackData, TireData, Strategy } from '../types'
+import { TireData, Strategy } from '../types'
 import { useTrackData } from '../context/TrackDataContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 
@@ -190,7 +190,6 @@ const DataEntry: React.FC = () => {
       notes: entry.notes ?? ''
     })
   }, [selectedTrack, trackData])
-  }
 
   const tabs = [
     { id: 'tire', label: 'Gumikopás adatok', icon: Thermometer },
