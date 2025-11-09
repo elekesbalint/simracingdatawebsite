@@ -99,7 +99,7 @@ const AccountSettings: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold text-f1-text">Kétlépcsős hitelesítés (2FA)</h2>
             <p className="text-sm text-f1-text-secondary">
-              A 2FA kötelező minden felhasználó számára a biztonság érdekében.
+              Növeld a fiókod védelmét authenticator alkalmazással.
             </p>
           </div>
           <span
