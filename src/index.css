@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0F0F0F 0%, #1A1A1A 100%);
+    color: #FFFFFF;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-f1-red hover:bg-red-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 hover:shadow-lg;
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 5px 15px rgba(225, 6, 0, 0.25);
+  }
+
+  .btn-secondary {
+    @apply bg-f1-gray hover:bg-f1-light-gray text-f1-text font-medium px-6 py-3 rounded-lg transition-all duration-300 border border-f1-light-gray hover:border-f1-gold hover:shadow-lg;
+  }
+  
+  .btn-secondary:hover {
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.1);
+  }
+
+  .btn-gold {
+    @apply bg-gradient-to-r from-f1-gold to-f1-gold-dark text-f1-darker font-medium px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 hover:shadow-lg animate-pulse-gold;
+  }
+  
+  .btn-gold:hover {
+    box-shadow: 0 10px 25px rgba(255, 215, 0, 0.5);
+  }
+
+  .card {
+    @apply bg-f1-gray border border-f1-light-gray rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-105;
+  }
+  
+  .card:hover {
+    border-color: rgba(255, 215, 0, 0.3);
+  }
+
+  .card-gold {
+    @apply bg-gradient-to-br from-f1-gray to-f1-darker rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-105;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+  }
+  
+  .card-gold:hover {
+    border-color: #FFD700;
+    box-shadow: 0 10px 25px rgba(255, 215, 0, 0.2);
+  }
+
+  .input-field {
+    @apply bg-f1-dark border border-f1-light-gray rounded-lg px-4 py-3 text-f1-text placeholder-f1-text-secondary focus:outline-none transition-all duration-300 focus:shadow-lg;
+  }
+  
+  .input-field:focus {
+    border-color: #FFD700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-f1-red to-f1-blue bg-clip-text text-transparent;
+  }
+
+  .gradient-text-gold {
+    @apply bg-gradient-to-r from-f1-gold to-f1-gold-light bg-clip-text text-transparent;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  .glow-gold {
+    @apply shadow-lg shadow-f1-gold/25 animate-glow;
+  }
+
+  .float-animation {
+    @apply animate-float;
+  }
+
+  .bounce-in {
+    @apply animate-bounce-in;
+  }
+
+  .slide-up {
+    @apply animate-slide-up;
+  }
+
+  .slide-down {
+    @apply animate-slide-down;
+  }
+
+  .slide-left {
+    @apply animate-slide-left;
+  }
+
+  .slide-right {
+    @apply animate-slide-right;
+  }
+
+  .scale-in {
+    @apply animate-scale-in;
+  }
+
+  .fade-in {
+    @apply animate-fade-in;
+  }
+}
