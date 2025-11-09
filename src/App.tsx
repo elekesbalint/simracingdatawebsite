@@ -13,12 +13,14 @@ import Register from './pages/Register'
 import AdminPanel from './pages/AdminPanel'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import { TrackDataProvider } from './context/TrackDataContext'
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
+      <TrackDataProvider>
+        <Router>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -113,9 +115,10 @@ function App() {
             }
           />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </TrackDataProvider>
     </AuthProvider>
   )
 }
