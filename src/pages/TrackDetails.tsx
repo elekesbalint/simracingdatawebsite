@@ -17,8 +17,7 @@ import Button from '../components/Button'
 import TireWearTable from '../components/TireWearTable'
 import { SimRacingBadge } from '../components/Branding'
 import { f1Tracks } from '../data/tracks'
-import { useLocalStorage } from '../hooks/useLocalStorage'
-import { Track, Strategy, TireData, HotlapEntry } from '../types'
+import { Strategy, TireData, HotlapEntry } from '../types'
 import TrackMapImage from '../components/TrackMapImage'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useTrackData } from '../context/TrackDataContext'
@@ -27,7 +26,6 @@ import Input from '../components/Input'
 const TrackDetails: React.FC = () => {
   const { trackId } = useParams<{ trackId: string }>()
   const { trackData, updateTrack, loading: trackDataLoading } = useTrackData()
-  const [recentTracks, setRecentTracks] = useLocalStorage<Track[]>('recentTracks', [])
   const track = f1Tracks.find(t => t.id === trackId)
   const currentTrackData = trackData.find(td => td.trackId === trackId)
   const [selectedCompoundSet, setSelectedCompoundSet] = useState<TireData['compoundSet'] | null>(null)
@@ -66,15 +64,12 @@ const TrackDetails: React.FC = () => {
   }, [selectedCompoundSet, currentTrackData])
 
   useEffect(() => {
-    if (track) {
-      // Add to recent tracks
-      const updatedRecentTracks = [
-        track,
-        ...recentTracks.filter(t => t.id !== track.id)
-      ].slice(0, 10)
-      setRecentTracks(updatedRecentTracks)
-    }
-  }, [track, recentTracks, setRecentTracks])
+    if (!trackId) return
+    void updateTrack(trackId, (current) => ({
+      ...current,
+      lastVisited: new Date()
+    }))
+  }, [trackId, updateTrack])
 
   if (trackDataLoading) {
     return (

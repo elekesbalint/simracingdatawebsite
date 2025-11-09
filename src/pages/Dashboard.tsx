@@ -15,13 +15,36 @@ import ProgressBar from '../components/ProgressBar'
 import { SimRacingBadge } from '../components/Branding'
 import { Track } from '../types'
 import { f1Tracks } from '../data/tracks'
-import { useLocalStorage } from '../hooks/useLocalStorage'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useTrackData } from '../context/TrackDataContext'
 
 const Dashboard: React.FC = () => {
-  const [recentTracks] = useLocalStorage<Track[]>('recentTracks', [])
   const { trackData, loading } = useTrackData()
+  const recentTracks = React.useMemo(() => {
+    return trackData
+      .filter((entry) => entry.lastVisited)
+      .sort((a, b) => {
+        const aTime = entryDateToNumber(a.lastVisited)
+        const bTime = entryDateToNumber(b.lastVisited)
+        return bTime - aTime
+      })
+      .map((entry) => {
+        const track = f1Tracks.find((item) => item.id === entry.trackId)
+        if (!track) return null
+        return {
+          ...track,
+          lastVisited: entry.lastVisited ?? undefined
+        }
+      })
+      .filter(Boolean) as Track[]
+  }, [trackData])
+
+  function entryDateToNumber(value: Date | string | null | undefined) {
+    if (!value) return 0
+    if (value instanceof Date) return value.getTime()
+    const parsed = new Date(value).getTime()
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
 
   const tracksWithTireData = trackData.filter((td) => td.tireData.length > 0).length
   const totalTireData = trackData.reduce((acc, data) => acc + data.tireData.length, 0)

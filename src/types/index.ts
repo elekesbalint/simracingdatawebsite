@@ -78,6 +78,7 @@ export interface TrackData {
   tireStintLaps?: number | null
   notes?: string
   lastUpdated: Date
+  lastVisited?: Date | null
   hotlaps?: HotlapEntry[]
   setups?: SetupEntry[]
 }

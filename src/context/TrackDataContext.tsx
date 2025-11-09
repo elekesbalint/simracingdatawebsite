@@ -52,6 +52,7 @@ const createDefaultTrackDataMap = () => {
       tireStintLaps: meta.tireStintLaps ?? null,
       notes: undefined,
       lastUpdated: baseDate,
+      lastVisited: null,
       hotlaps: [],
       setups: []
     })
@@ -74,6 +75,11 @@ const normalizeTrackData = (entry: Partial<TrackData> & { trackId: string; lastU
       ? entry.lastUpdated
       : new Date(entry.lastUpdated)
     : new Date()
+  const lastVisited = entry.lastVisited
+    ? entry.lastVisited instanceof Date
+      ? entry.lastVisited
+      : new Date(entry.lastVisited)
+    : base?.lastVisited ?? null
 
   const tireData: TireData[] = (entry.tireData ?? base?.tireData ?? []).map((tire) => ({
     ...tire,
@@ -107,13 +113,18 @@ const normalizeTrackData = (entry: Partial<TrackData> & { trackId: string; lastU
     strategies,
     hotlaps: entry.hotlaps ?? base?.hotlaps ?? [],
     setups: entry.setups ?? base?.setups ?? [],
-    lastUpdated
+    lastUpdated,
+    lastVisited
   }
 }
 
 const serializeTrackData = (entry: TrackData) => ({
   ...entry,
   lastUpdated: entry.lastUpdated instanceof Date ? entry.lastUpdated.toISOString() : entry.lastUpdated,
+  lastVisited:
+    entry.lastVisited instanceof Date
+      ? entry.lastVisited.toISOString()
+      : entry.lastVisited ?? null,
   strategies: entry.strategies.map((strategy) => ({
     ...strategy,
     createdAt: strategy.createdAt instanceof Date ? strategy.createdAt.toISOString() : strategy.createdAt

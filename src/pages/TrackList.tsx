@@ -15,15 +15,15 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import Select from '../components/Select'
 import { f1Tracks } from '../data/tracks'
-import { useLocalStorage } from '../hooks/useLocalStorage'
 import { Track } from '../types'
 import TrackMapImage from '../components/TrackMapImage'
+import { useTrackData } from '../context/TrackDataContext'
 
 const TrackList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [recentTracks, setRecentTracks] = useLocalStorage<Track[]>('recentTracks', [])
+  const { updateTrack } = useTrackData()
 
   const countries = useMemo(() => {
     const uniqueCountries = [...new Set(f1Tracks.map(track => track.country))]
@@ -40,12 +40,10 @@ const TrackList: React.FC = () => {
   }, [searchTerm, selectedCountry])
 
   const handleTrackClick = (track: Track) => {
-    // Add to recent tracks
-    const updatedRecentTracks = [
-      track,
-      ...recentTracks.filter(t => t.id !== track.id)
-    ].slice(0, 10) // Keep only last 10
-    setRecentTracks(updatedRecentTracks)
+    void updateTrack(track.id, (current) => ({
+      ...current,
+      lastVisited: new Date()
+    }))
   }
 
   const TrackCard: React.FC<{ track: Track }> = ({ track }) => (
@@ -53,7 +51,7 @@ const TrackList: React.FC = () => {
       className="group cursor-pointer hover:scale-105 transition-all duration-500 slide-up hover:border-f1-gold/50 hover:shadow-f1-gold/20"
       onClick={() => handleTrackClick(track)}
     >
-      <Link to={`/tracks/${track.id}`} className="block">
+      <Link to={`/tracks/${track.id}`} className="block" onClick={() => handleTrackClick(track)}>
         <TrackMapImage
           src={track.mapImageUrl}
           alt={`${track.name} layout`}
@@ -110,7 +108,11 @@ const TrackList: React.FC = () => {
       className="flex items-center justify-between p-6 bg-f1-gray rounded-lg hover:bg-f1-light-gray transition-colors cursor-pointer group"
       onClick={() => handleTrackClick(track)}
     >
-      <Link to={`/tracks/${track.id}`} className="flex-1 flex items-center space-x-6">
+      <Link
+        to={`/tracks/${track.id}`}
+        className="flex-1 flex items-center space-x-6"
+        onClick={() => handleTrackClick(track)}
+      >
         <TrackMapImage
           src={track.mapImageUrl}
           alt={`${track.name} layout`}

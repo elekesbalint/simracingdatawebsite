@@ -14,7 +14,6 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import Select from '../components/Select'
 import TrackMapImage from '../components/TrackMapImage'
-import { useLocalStorage } from '../hooks/useLocalStorage'
 import { f1Tracks } from '../data/tracks'
 import {
   Track,
@@ -23,7 +22,8 @@ import {
   SetupEntry,
   StoredFile
 } from '../types'
-import { trackMetaData } from '../data/trackMeta'
+import LoadingSpinner from '../components/LoadingSpinner'
+import { useTrackData } from '../context/TrackDataContext'
 
 interface HotlapFormState {
   lapTime: string
@@ -65,27 +65,6 @@ const parseLapTime = (value: string): number => {
   return Number.POSITIVE_INFINITY
 }
 
-const createBaseTrackEntry = (trackId: string): TrackData => {
-  const meta = trackMetaData[trackId] || {}
-  return {
-    trackId,
-    tireData: [],
-    strategies: [],
-    bestLap: undefined,
-    averageLap: undefined,
-    fuelDelta: meta.fuelDelta ?? null,
-    drsZones: meta.drsZones ?? null,
-    pitStopLoss: meta.pitStopLoss ?? null,
-    ersNotes: meta.ersNotes ?? [],
-    details: meta.details ?? [],
-    tireStintLaps: meta.tireStintLaps ?? null,
-    notes: undefined,
-    lastUpdated: new Date(),
-    hotlaps: [],
-    setups: []
-  }
-}
-
 const fileToStoredFile = async (file: File): Promise<StoredFile> => {
   const data = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -124,11 +103,17 @@ const defaultSetupForm: SetupFormState = {
 }
 
 const HotlapsAndSetups: React.FC = () => {
-  const [trackData, setTrackData] = useLocalStorage<TrackData[]>('trackData', [])
+  const { trackData, updateTrack, loading: trackLoading } = useTrackData()
   const initialTrack = f1Tracks[0]?.id ?? ''
   const [selectedTrackId, setSelectedTrackId] = useState<string>(initialTrack)
   const [hotlapForm, setHotlapForm] = useState<HotlapFormState>(defaultHotlapForm)
   const [setupForm, setSetupForm] = useState<SetupFormState>(defaultSetupForm)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  )
+  const [saving, setSaving] = useState<'hotlap' | 'setup' | 'delete-hotlap' | 'delete-setup' | null>(
+    null
+  )
 
   useEffect(() => {
     if (!selectedTrackId && f1Tracks.length) {
@@ -139,6 +124,8 @@ const HotlapsAndSetups: React.FC = () => {
   useEffect(() => {
     setHotlapForm(defaultHotlapForm)
     setSetupForm(defaultSetupForm)
+    setFeedback(null)
+    setSaving(null)
   }, [selectedTrackId])
 
   const trackOptions = useMemo(
@@ -188,23 +175,19 @@ const HotlapsAndSetups: React.FC = () => {
     return map
   }, [hotlaps])
 
-  const updateTrackEntry = (trackId: string, transform: (entry: TrackData) => TrackData) => {
-    setTrackData((prev) => {
-      const index = prev.findIndex((item) => item.trackId === trackId)
-      if (index !== -1) {
-        const baseEntry = {
-          ...prev[index],
-          hotlaps: prev[index].hotlaps ?? [],
-          setups: prev[index].setups ?? []
-        }
-        const updated = transform(baseEntry)
-        const next = [...prev]
-        next[index] = updated
-        return next
+  const updateTrackEntry = async (trackId: string, transform: (entry: TrackData) => TrackData) => {
+    await updateTrack(trackId, (current) => {
+      const base: TrackData = {
+        ...current,
+        tireData: current.tireData ?? [],
+        strategies: current.strategies ?? [],
+        hotlaps: current.hotlaps ?? [],
+        setups: current.setups ?? [],
+        ersNotes: current.ersNotes ?? [],
+        details: current.details ?? [],
+        lastVisited: current.lastVisited ?? null
       }
-
-      const base = createBaseTrackEntry(trackId)
-      return [...prev, transform(base)]
+      return transform(base)
     })
   }
 
@@ -212,127 +195,193 @@ const HotlapsAndSetups: React.FC = () => {
     event.preventDefault()
     if (!selectedTrackId || !hotlapForm.lapTime.trim()) return
 
-    const attachment = hotlapForm.attachment
-      ? await fileToStoredFile(hotlapForm.attachment)
-      : undefined
-    const linkedSetupId = hotlapForm.linkedSetupId || undefined
+    setFeedback(null)
+    setSaving('hotlap')
 
-    updateTrackEntry(selectedTrackId, (entry) => {
-      const linkedSetup = linkedSetupId ? setupsById.get(linkedSetupId) : undefined
+    try {
+      const attachment = hotlapForm.attachment
+        ? await fileToStoredFile(hotlapForm.attachment)
+        : undefined
+      const linkedSetupId = hotlapForm.linkedSetupId || undefined
 
-      const newHotlap: HotlapEntry = {
-        id: Date.now().toString(),
-        trackId: selectedTrackId,
-        lapTime: hotlapForm.lapTime.trim(),
-        setupName: hotlapForm.setupName.trim() || linkedSetup?.title,
-        notes: hotlapForm.notes.trim() || undefined,
-        attachment,
-        linkedSetupIds: linkedSetupId ? [linkedSetupId] : undefined,
-        createdAt: new Date().toISOString(),
-        createdBy: hotlapForm.createdBy.trim() || undefined
-      }
+      await updateTrackEntry(selectedTrackId, (entry) => {
+        const linkedSetup = linkedSetupId ? setupsById.get(linkedSetupId) : undefined
 
-      const updatedHotlaps = [...(entry.hotlaps ?? []), newHotlap]
-      const updatedSetups = (entry.setups ?? []).map((setup) =>
-        setup.id === linkedSetupId
-          ? {
-              ...setup,
-              linkedHotlapIds: addUnique(setup.linkedHotlapIds, newHotlap.id)
-            }
-          : setup
-      )
+        const newHotlap: HotlapEntry = {
+          id: Date.now().toString(),
+          trackId: selectedTrackId,
+          lapTime: hotlapForm.lapTime.trim(),
+          setupName: hotlapForm.setupName.trim() || linkedSetup?.title,
+          notes: hotlapForm.notes.trim() || undefined,
+          attachment,
+          linkedSetupIds: linkedSetupId ? [linkedSetupId] : undefined,
+          createdAt: new Date().toISOString(),
+          createdBy: hotlapForm.createdBy.trim() || undefined
+        }
 
-      return {
-        ...entry,
-        hotlaps: updatedHotlaps,
-        setups: updatedSetups,
-        lastUpdated: new Date()
-      }
-    })
+        const updatedHotlaps = [...(entry.hotlaps ?? []), newHotlap]
+        const updatedSetups = (entry.setups ?? []).map((setup) =>
+          setup.id === linkedSetupId
+            ? {
+                ...setup,
+                linkedHotlapIds: addUnique(setup.linkedHotlapIds, newHotlap.id)
+              }
+            : setup
+        )
 
-    setHotlapForm(defaultHotlapForm)
+        return {
+          ...entry,
+          hotlaps: updatedHotlaps,
+          setups: updatedSetups,
+          lastUpdated: new Date()
+        }
+      })
+
+      setHotlapForm(defaultHotlapForm)
+      setFeedback({ type: 'success', message: 'Hotlap sikeresen mentve.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült menteni a hotlapot. Próbáld újra.'
+      })
+    } finally {
+      setSaving(null)
+    }
   }
 
   const handleAddSetup = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!selectedTrackId || !setupForm.configuration.trim()) return
 
-    const attachment = setupForm.attachment
-      ? await fileToStoredFile(setupForm.attachment)
-      : undefined
-    const linkedHotlapId = setupForm.linkedHotlapId || undefined
+    setFeedback(null)
+    setSaving('setup')
 
-    updateTrackEntry(selectedTrackId, (entry) => {
-      const newSetup: SetupEntry = {
-        id: Date.now().toString(),
-        trackId: selectedTrackId,
-        title: setupForm.title.trim() || undefined,
-        configuration: setupForm.configuration.replace(/\r\n/g, '\n'),
-        notes: setupForm.notes.trim() || undefined,
-        attachment,
-        linkedHotlapIds: linkedHotlapId ? [linkedHotlapId] : undefined,
-        createdAt: new Date().toISOString(),
-        createdBy: setupForm.createdBy.trim() || undefined
-      }
+    try {
+      const attachment = setupForm.attachment
+        ? await fileToStoredFile(setupForm.attachment)
+        : undefined
+      const linkedHotlapId = setupForm.linkedHotlapId || undefined
 
-      const updatedSetups = [...(entry.setups ?? []), newSetup]
-      const updatedHotlaps = (entry.hotlaps ?? []).map((hotlap) =>
-        hotlap.id === linkedHotlapId
-          ? {
-              ...hotlap,
-              linkedSetupIds: addUnique(hotlap.linkedSetupIds, newSetup.id),
-              setupName: hotlap.setupName || newSetup.title
-            }
-          : hotlap
-      )
+      await updateTrackEntry(selectedTrackId, (entry) => {
+        const newSetup: SetupEntry = {
+          id: Date.now().toString(),
+          trackId: selectedTrackId,
+          title: setupForm.title.trim() || undefined,
+          configuration: setupForm.configuration.replace(/\r\n/g, '\n'),
+          notes: setupForm.notes.trim() || undefined,
+          attachment,
+          linkedHotlapIds: linkedHotlapId ? [linkedHotlapId] : undefined,
+          createdAt: new Date().toISOString(),
+          createdBy: setupForm.createdBy.trim() || undefined
+        }
 
-      return {
-        ...entry,
-        setups: updatedSetups,
-        hotlaps: updatedHotlaps,
-        lastUpdated: new Date()
-      }
-    })
+        const updatedSetups = [...(entry.setups ?? []), newSetup]
+        const updatedHotlaps = (entry.hotlaps ?? []).map((hotlap) =>
+          hotlap.id === linkedHotlapId
+            ? {
+                ...hotlap,
+                linkedSetupIds: addUnique(hotlap.linkedSetupIds, newSetup.id),
+                setupName: hotlap.setupName || newSetup.title
+              }
+            : hotlap
+        )
 
-    setSetupForm(defaultSetupForm)
+        return {
+          ...entry,
+          setups: updatedSetups,
+          hotlaps: updatedHotlaps,
+          lastUpdated: new Date()
+        }
+      })
+
+      setSetupForm(defaultSetupForm)
+      setFeedback({ type: 'success', message: 'Setup sikeresen mentve.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült menteni a setupot. Próbáld újra.'
+      })
+    } finally {
+      setSaving(null)
+    }
   }
 
-  const handleDeleteHotlap = (hotlapId: string) => {
+  const handleDeleteHotlap = async (hotlapId: string) => {
     if (!selectedTrackId) return
 
-    updateTrackEntry(selectedTrackId, (entry) => {
-      const filteredHotlaps = (entry.hotlaps ?? []).filter((hotlap) => hotlap.id !== hotlapId)
-      const filteredSetups = (entry.setups ?? []).map((setup) => ({
-        ...setup,
-        linkedHotlapIds: setup.linkedHotlapIds?.filter((id) => id !== hotlapId)
-      }))
+    setFeedback(null)
+    setSaving('delete-hotlap')
 
-      return {
-        ...entry,
-        hotlaps: filteredHotlaps,
-        setups: filteredSetups,
-        lastUpdated: new Date()
-      }
-    })
+    try {
+      await updateTrackEntry(selectedTrackId, (entry) => {
+        const filteredHotlaps = (entry.hotlaps ?? []).filter((hotlap) => hotlap.id !== hotlapId)
+        const filteredSetups = (entry.setups ?? []).map((setup) => ({
+          ...setup,
+          linkedHotlapIds: setup.linkedHotlapIds?.filter((id) => id !== hotlapId)
+        }))
+
+        return {
+          ...entry,
+          hotlaps: filteredHotlaps,
+          setups: filteredSetups,
+          lastUpdated: new Date()
+        }
+      })
+
+      setFeedback({ type: 'success', message: 'Hotlap törölve.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült törölni a hotlapot. Próbáld újra.'
+      })
+    } finally {
+      setSaving(null)
+    }
   }
 
-  const handleDeleteSetup = (setupId: string) => {
+  const handleDeleteSetup = async (setupId: string) => {
     if (!selectedTrackId) return
 
-    updateTrackEntry(selectedTrackId, (entry) => {
-      const filteredSetups = (entry.setups ?? []).filter((setup) => setup.id !== setupId)
-      const filteredHotlaps = (entry.hotlaps ?? []).map((hotlap) => ({
-        ...hotlap,
-        linkedSetupIds: hotlap.linkedSetupIds?.filter((id) => id !== setupId)
-      }))
+    setFeedback(null)
+    setSaving('delete-setup')
 
-      return {
-        ...entry,
-        setups: filteredSetups,
-        hotlaps: filteredHotlaps,
-        lastUpdated: new Date()
-      }
-    })
+    try {
+      await updateTrackEntry(selectedTrackId, (entry) => {
+        const filteredSetups = (entry.setups ?? []).filter((setup) => setup.id !== setupId)
+        const filteredHotlaps = (entry.hotlaps ?? []).map((hotlap) => ({
+          ...hotlap,
+          linkedSetupIds: hotlap.linkedSetupIds?.filter((id) => id !== setupId)
+        }))
+
+        return {
+          ...entry,
+          setups: filteredSetups,
+          hotlaps: filteredHotlaps,
+          lastUpdated: new Date()
+        }
+      })
+
+      setFeedback({ type: 'success', message: 'Setup törölve.' })
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        message:
+          error instanceof Error ? error.message : 'Nem sikerült törölni a setupot. Próbáld újra.'
+      })
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  if (trackLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
   }
 
   return (
@@ -349,6 +398,18 @@ const HotlapsAndSetups: React.FC = () => {
           <Button variant="secondary">Vissza a pályákhoz</Button>
         </Link>
       </header>
+
+      {feedback && (
+        <div
+          className={`rounded-lg px-4 py-3 text-sm ${
+            feedback.type === 'success'
+              ? 'border border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
+              : 'border border-f1-red/40 bg-f1-red/10 text-f1-red'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
 
       <Card className="space-y-6 slide-up">
         <div className="grid grid-cols-1 xl:grid-cols-[320px,1fr] gap-6">
@@ -446,9 +507,14 @@ const HotlapsAndSetups: React.FC = () => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button type="submit" variant="gold" className="inline-flex items-center space-x-2">
+                  <Button
+                    type="submit"
+                    variant="gold"
+                    className="inline-flex items-center space-x-2"
+                    disabled={saving === 'hotlap'}
+                  >
                     <Plus className="h-4 w-4" />
-                    <span>Hotlap mentése</span>
+                    <span>{saving === 'hotlap' ? 'Mentés...' : 'Hotlap mentése'}</span>
                   </Button>
                 </div>
               </form>
@@ -527,9 +593,14 @@ const HotlapsAndSetups: React.FC = () => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button type="submit" variant="gold" className="inline-flex items-center space-x-2">
+                  <Button
+                    type="submit"
+                    variant="gold"
+                    className="inline-flex items-center space-x-2"
+                    disabled={saving === 'setup'}
+                  >
                     <Plus className="h-4 w-4" />
-                    <span>Setup mentése</span>
+                    <span>{saving === 'setup' ? 'Mentés...' : 'Setup mentése'}</span>
                   </Button>
                 </div>
               </form>
@@ -576,6 +647,7 @@ const HotlapsAndSetups: React.FC = () => {
                         size="sm"
                         onClick={() => handleDeleteHotlap(entry.id)}
                         className="border-f1-light-gray/40 hover:border-f1-red/40 hover:text-f1-red"
+                        disabled={saving === 'delete-hotlap'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -703,6 +775,7 @@ const HotlapsAndSetups: React.FC = () => {
                         size="sm"
                         onClick={() => handleDeleteSetup(setup.id)}
                         className="border-f1-light-gray/40 hover:border-f1-red/40 hover:text-f1-red"
+                        disabled={saving === 'delete-setup'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
