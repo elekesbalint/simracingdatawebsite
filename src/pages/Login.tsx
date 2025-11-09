@@ -84,11 +84,6 @@ const Login: React.FC = () => {
           </Button>
         </form>
 
-        <div className="rounded-lg border border-f1-light-gray/40 bg-f1-dark/60 px-4 py-3 text-xs text-f1-text-secondary space-y-1">
-          <p className="font-medium text-f1-text">Teszt admin fiók</p>
-          <p>E-mail: admin@simhub.local</p>
-          <p>Jelszó: admin123</p>
-        </div>
       </Card>
 
       <div className="text-xs text-f1-text-secondary text-center space-y-1">
