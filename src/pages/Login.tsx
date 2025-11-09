@@ -7,19 +7,31 @@ import { useAuth } from '../context/AuthContext'
 import { F125Badge, SimRacingBadge } from '../components/Branding'
 
 const Login: React.FC = () => {
-  const { login, currentUser, loading } = useAuth()
+  const { login, verifyTwoFactor, pendingTwoFactor, currentUser, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation() as { state?: { from?: Location } }
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [twoFactorToken, setTwoFactorToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [twoFactorStep, setTwoFactorStep] = useState(false)
 
   useEffect(() => {
     if (currentUser && currentUser.status === 'approved') {
       navigate('/', { replace: true })
     }
   }, [currentUser, navigate])
+
+  useEffect(() => {
+    if (pendingTwoFactor) {
+      setTwoFactorStep(true)
+    } else {
+      setTwoFactorStep(false)
+      setTwoFactorToken('')
+    }
+  }, [pendingTwoFactor])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -29,13 +41,40 @@ const Login: React.FC = () => {
     const result = await login(email, password)
 
     if (!result.success) {
-      setError(result.message ?? 'Sikertelen bejelentkezés.')
+      if (result.requiresTwoFactor) {
+        setTwoFactorStep(true)
+        setError(result.message ?? 'Add meg a 2FA kódot.')
+      } else {
+        setError(result.message ?? 'Sikertelen bejelentkezés.')
+      }
     } else {
       const from = location.state?.from
       navigate(from?.pathname || '/', { replace: true })
     }
 
     setIsSubmitting(false)
+  }
+
+  const handleTwoFactorSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!twoFactorToken.trim()) {
+      setError('Add meg a 2FA kódot.')
+      return
+    }
+
+    setIsVerifying(true)
+    setError(null)
+
+    const result = await verifyTwoFactor(twoFactorToken.trim())
+
+    if (!result.success) {
+      setError(result.message ?? 'Érvénytelen 2FA kód.')
+    } else {
+      const from = location.state?.from
+      navigate(from?.pathname || '/', { replace: true })
+    }
+
+    setIsVerifying(false)
   }
 
   return (
@@ -62,27 +101,66 @@ const Login: React.FC = () => {
           </div>
         )}
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <Input
-            label="E-mail vagy felhasználónév"
-            type="text"
-            value={email}
-            onChange={setEmail}
-            placeholder="pl. admin vagy you@example.com"
-            required
-          />
-          <Input
-            label="Jelszó"
-            type="password"
-            value={password}
-            onChange={setPassword}
-            placeholder="••••••••"
-            required
-          />
-          <Button type="submit" variant="gold" className="w-full" disabled={isSubmitting || loading}>
-            {isSubmitting ? 'Bejelentkezés...' : 'Bejelentkezés'}
-          </Button>
-        </form>
+        {!twoFactorStep ? (
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <Input
+              label="E-mail vagy felhasználónév"
+              type="text"
+              value={email}
+              onChange={setEmail}
+              placeholder="pl. admin vagy you@example.com"
+              required
+            />
+            <Input
+              label="Jelszó"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="••••••••"
+              required
+            />
+            <Button
+              type="submit"
+              variant="gold"
+              className="w-full"
+              disabled={isSubmitting || loading}
+            >
+              {isSubmitting ? 'Bejelentkezés...' : 'Bejelentkezés'}
+            </Button>
+          </form>
+        ) : (
+          <form className="space-y-4" onSubmit={handleTwoFactorSubmit}>
+            <Input
+              label="2FA kód"
+              type="text"
+              value={twoFactorToken}
+              onChange={setTwoFactorToken}
+              placeholder="••••••"
+              required
+            />
+            <Button
+              type="submit"
+              variant="gold"
+              className="w-full"
+              disabled={isVerifying || loading}
+            >
+              {isVerifying ? 'Ellenőrzés...' : 'Belépés megerősítése'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setTwoFactorStep(false)
+                setTwoFactorToken('')
+                setError(null)
+              }}
+              disabled={isVerifying}
+            >
+              Vissza
+            </Button>
+          </form>
+        )}
 
       </Card>
 

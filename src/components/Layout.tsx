@@ -9,7 +9,8 @@ import {
   Flame,
   Timer,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react'
 import { F125Badge, SimRacingBadge } from './Branding'
 import Button from './Button'
@@ -32,7 +33,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       { path: '/strategies', icon: Navigation2, label: 'Stratégia' },
       { path: '/fuel', icon: Flame, label: 'Fuel Data' },
       { path: '/hotlaps', icon: Timer, label: 'Hotlaps & Setups' },
-      { path: '/data-entry', icon: PlusCircle, label: 'Adatbevitel' }
+      { path: '/data-entry', icon: PlusCircle, label: 'Adatbevitel' },
+      { path: '/account', icon: Settings, label: 'Fiók' }
     ]
 
     if (currentUser?.role === 'admin') {

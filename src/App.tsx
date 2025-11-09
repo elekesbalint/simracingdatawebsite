@@ -8,6 +8,7 @@ import TyreOverview from './pages/TyreOverview'
 import StrategyOverview from './pages/StrategyOverview'
 import FuelOverview from './pages/FuelOverview'
 import HotlapsAndSetups from './pages/HotlapsAndSetups'
+import AccountSettings from './pages/AccountSettings'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminPanel from './pages/AdminPanel'
@@ -105,6 +106,16 @@ function App() {
               }
             />
             <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AccountSettings />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
               path="/admin"
               element={
                 <ProtectedRoute requireAdmin>

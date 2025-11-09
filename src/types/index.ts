@@ -94,4 +94,5 @@ export interface AuthUser {
   status: UserStatus
   role: UserRole
   createdAt: string
+  twoFactorEnabled?: boolean
 }

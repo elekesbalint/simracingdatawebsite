@@ -7,11 +7,22 @@ interface AuthContextValue {
   users: AuthUser[]
   currentUser: AuthUser | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>
+  pendingTwoFactor: { email: string; userId: string } | null
+  login: (
+    email: string,
+    password: string,
+    token?: string
+  ) => Promise<{ success: boolean; message?: string; requiresTwoFactor?: boolean }>
   register: (payload: { name: string; email: string; password: string }) => Promise<{
     success: boolean
     message: string
   }>
+  verifyTwoFactor: (token: string) => Promise<{ success: boolean; message?: string }>
+  generateTwoFactorSetup: (
+    password: string
+  ) => Promise<{ success: boolean; message?: string; secret?: string; otpauthUrl?: string; qrCode?: string }>
+  confirmTwoFactor: (token: string) => Promise<{ success: boolean; message?: string }>
+  disableTwoFactor: (password: string, token?: string) => Promise<{ success: boolean; message?: string }>
   logout: () => void
   approveUser: (userId: string) => Promise<void>
   rejectUser: (userId: string) => Promise<void>
@@ -32,7 +43,8 @@ const mapRowToAuthUser = (row: any): AuthUser => ({
   password: row.password,
   role: row.role,
   status: row.status,
-  createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString()
+  createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+  twoFactorEnabled: Boolean(row.two_factor_enabled)
 })
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -157,49 +169,200 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUserId, users])
 
-  const login = useCallback<
-    AuthContextValue['login']
-  >(async (email, password) => {
-    if (!isSupabaseConfigured) {
-      return { success: false, message: 'Supabase konfiguráció hiányzik.' }
-    }
+  const [pendingTwoFactor, setPendingTwoFactor] = useState<{
+    email: string
+    password: string
+    userId: string
+  } | null>(null)
 
-    const normalizedEmail = email.trim().toLowerCase()
-    const { data, error } = await supabase
-      .from('auth_users')
-      .select('*')
-      .eq('email', normalizedEmail)
-      .limit(1)
-      .maybeSingle()
+  const login = useCallback<AuthContextValue['login']>(
+    async (email, password, token) => {
+      if (!isSupabaseConfigured) {
+        return { success: false, message: 'Supabase konfiguráció hiányzik.' }
+      }
 
-    if (error || !data) {
-      return { success: false, message: 'Hibás e-mail vagy jelszó.' }
-    }
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            token
+          })
+        })
 
-    const user = mapRowToAuthUser(data)
+        const result = await response.json()
 
-    const passwordsMatch = await bcryptCompare(password, user.password ?? '')
+        if (!response.ok && !result.requiresTwoFactor) {
+          return { success: false, message: result.message ?? 'Sikertelen bejelentkezés.' }
+        }
 
-    if (!passwordsMatch) {
-      return { success: false, message: 'Hibás e-mail vagy jelszó.' }
-    }
+        if (result.requiresTwoFactor) {
+          setPendingTwoFactor({
+            email,
+            password,
+            userId: result.userId
+          })
 
-    if (user.status === 'pending') {
-      return { success: false, message: 'Regisztrációd még admin jóváhagyásra vár.' }
-    }
+          return {
+            success: false,
+            requiresTwoFactor: true,
+            message: result.message ?? 'Add meg a 2FA kódot.'
+          }
+        }
 
-    if (user.status === 'rejected') {
-      return { success: false, message: 'A regisztrációdat az admin elutasította.' }
-    }
+        if (!result.success || !result.user) {
+          return { success: false, message: result.message ?? 'Sikertelen bejelentkezés.' }
+        }
 
-    setCurrentUserId(user.id)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CURRENT_USER_KEY, user.id)
-    }
+        setPendingTwoFactor(null)
+        setCurrentUserId(result.user.id)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(CURRENT_USER_KEY, result.user.id)
+        }
 
-    await loadUsers()
-    return { success: true }
-  }, [loadUsers])
+        await loadUsers()
+        return { success: true }
+      } catch (err) {
+        console.error('Login request failed:', err)
+        return { success: false, message: 'Nem sikerült kapcsolódni a szerverhez.' }
+      }
+    },
+    [isSupabaseConfigured, loadUsers]
+  )
+
+  const verifyTwoFactor = useCallback<AuthContextValue['verifyTwoFactor']>(
+    async (token) => {
+      if (!pendingTwoFactor) {
+        return { success: false, message: 'Nincs folyamatban lévő 2FA ellenőrzés.' }
+      }
+
+      return login(pendingTwoFactor.email, pendingTwoFactor.password, token)
+    },
+    [login, pendingTwoFactor]
+  )
+
+  const generateTwoFactorSetup = useCallback<AuthContextValue['generateTwoFactorSetup']>(
+    async (password) => {
+      if (!isSupabaseConfigured) {
+        return { success: false, message: 'Supabase konfiguráció hiányzik.' }
+      }
+
+      if (!currentUser) {
+        return { success: false, message: 'Nincs bejelentkezett felhasználó.' }
+      }
+
+      try {
+        const response = await fetch('/api/auth/totp-setup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            password
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          return { success: false, message: result.message ?? 'Nem sikerült létrehozni a 2FA kulcsot.' }
+        }
+
+        return {
+          success: true,
+          secret: result.secret,
+          otpauthUrl: result.otpauthUrl,
+          qrCode: result.qrCode
+        }
+      } catch (err) {
+        console.error('generateTwoFactorSetup failed:', err)
+        return { success: false, message: 'Nem sikerült kapcsolódni a szerverhez.' }
+      }
+    },
+    [currentUser]
+  )
+
+  const confirmTwoFactor = useCallback<AuthContextValue['confirmTwoFactor']>(
+    async (token) => {
+      if (!isSupabaseConfigured) {
+        return { success: false, message: 'Supabase konfiguráció hiányzik.' }
+      }
+
+      if (!currentUser) {
+        return { success: false, message: 'Nincs bejelentkezett felhasználó.' }
+      }
+
+      try {
+        const response = await fetch('/api/auth/totp-verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            token
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          return { success: false, message: result.message ?? 'Érvénytelen kód.' }
+        }
+
+        await loadUsers()
+        return { success: true }
+      } catch (err) {
+        console.error('confirmTwoFactor failed:', err)
+        return { success: false, message: 'Nem sikerült kapcsolódni a szerverhez.' }
+      }
+    },
+    [currentUser, loadUsers]
+  )
+
+  const disableTwoFactor = useCallback<AuthContextValue['disableTwoFactor']>(
+    async (password, token) => {
+      if (!isSupabaseConfigured) {
+        return { success: false, message: 'Supabase konfiguráció hiányzik.' }
+      }
+
+      if (!currentUser) {
+        return { success: false, message: 'Nincs bejelentkezett felhasználó.' }
+      }
+
+      try {
+        const response = await fetch('/api/auth/totp-disable', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            password,
+            token
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          return { success: false, message: result.message ?? 'Nem sikerült kikapcsolni a 2FA-t.' }
+        }
+
+        await loadUsers()
+        return { success: true }
+      } catch (err) {
+        console.error('disableTwoFactor failed:', err)
+        return { success: false, message: 'Nem sikerült kapcsolódni a szerverhez.' }
+      }
+    },
+    [currentUser, loadUsers]
+  )
 
   const register = useCallback<
     AuthContextValue['register']
@@ -255,6 +418,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     setCurrentUserId(null)
+    setPendingTwoFactor(null)
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(CURRENT_USER_KEY)
     }
@@ -319,8 +483,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     users,
     currentUser,
     loading,
+    pendingTwoFactor: pendingTwoFactor
+      ? { email: pendingTwoFactor.email, userId: pendingTwoFactor.userId }
+      : null,
     login,
     register,
+    verifyTwoFactor,
+    generateTwoFactorSetup,
+    confirmTwoFactor,
+    disableTwoFactor,
     logout,
     approveUser,
     rejectUser,
