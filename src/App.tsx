@@ -21,99 +21,99 @@ function App() {
       <TrackDataProvider>
         <Router>
           <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tracks"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TrackList />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tracks/:trackId"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TrackDetails />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tyres"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TyreOverview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/strategies"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <StrategyOverview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/fuel"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <FuelOverview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/hotlaps"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <HotlapsAndSetups />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/data-entry"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DataEntry />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute requireAdmin>
-                <Layout>
-                  <AdminPanel />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tracks"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <TrackList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tracks/:trackId"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <TrackDetails />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tyres"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <TyreOverview />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/strategies"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StrategyOverview />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/fuel"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <FuelOverview />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/hotlaps"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <HotlapsAndSetups />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data-entry"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataEntry />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <AdminPanel />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
