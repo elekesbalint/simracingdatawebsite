@@ -263,8 +263,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUserStatus = useCallback(
     async (userId: string, status: UserStatus) => {
       if (!isSupabaseConfigured) {
-        return
+        throw new Error('Supabase konfiguráció hiányzik.')
       }
+
+      let previousUser: AuthUser | undefined
+
+      setUsers((prev) => {
+        previousUser = prev.find((user) => user.id === userId)
+        if (!previousUser) {
+          return prev
+        }
+
+        return prev.map((user) => (user.id === userId ? { ...user, status } : user))
+      })
 
       const { error } = await supabase
         .from('auth_users')
@@ -273,7 +284,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Supabase státusz frissítés hiba:', error.message)
-        return
+
+        if (previousUser) {
+          setUsers((prev) => prev.map((user) => (user.id === userId ? previousUser! : user)))
+        }
+
+        throw new Error('Nem sikerült frissíteni a felhasználó státuszát. Próbáld újra később.')
       }
 
       if (currentUserId === userId && status !== 'approved') {

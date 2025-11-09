@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 
 const AdminPanel: React.FC = () => {
   const { users, approveUser, rejectUser, currentUser, loading } = useAuth()
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
 
   const { pending, approved, rejected } = useMemo(() => {
@@ -18,15 +19,31 @@ const AdminPanel: React.FC = () => {
   }, [users, currentUser])
 
   const handleApprove = async (userId: string) => {
+    setErrorMessage(null)
     setUpdatingUserId(userId)
-    await approveUser(userId)
-    setUpdatingUserId(null)
+    try {
+      await approveUser(userId)
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Nem sikerült jóváhagyni a felhasználót.'
+      )
+    } finally {
+      setUpdatingUserId(null)
+    }
   }
 
   const handleReject = async (userId: string) => {
+    setErrorMessage(null)
     setUpdatingUserId(userId)
-    await rejectUser(userId)
-    setUpdatingUserId(null)
+    try {
+      await rejectUser(userId)
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Nem sikerült elutasítani a felhasználót.'
+      )
+    } finally {
+      setUpdatingUserId(null)
+    }
   }
 
   if (loading) {
@@ -72,6 +89,12 @@ const AdminPanel: React.FC = () => {
             </p>
           </div>
         </header>
+
+        {errorMessage && (
+          <div className="rounded-lg border border-f1-red/40 bg-f1-red/10 px-4 py-3 text-sm text-f1-red">
+            {errorMessage}
+          </div>
+        )}
 
         {pending.length === 0 ? (
           <div className="text-center py-10 text-f1-text-secondary">
