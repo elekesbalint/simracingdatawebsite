@@ -38,7 +38,15 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       return
     }
 
-    const totpSecret = decrypt(data.totp_secret ?? null)
+    // Handle 2FA
+    let totpSecret: string | null = null
+    try {
+      totpSecret = data.totp_secret ? decrypt(data.totp_secret) : null
+    } catch (decryptError) {
+      console.error('TOTP decryption failed:', decryptError)
+      totpSecret = null
+    }
+    
     const twoFactorEnabled = Boolean(data.two_factor_enabled && totpSecret)
 
     if (twoFactorEnabled) {
