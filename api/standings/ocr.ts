@@ -85,9 +85,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
           content: [
             {
               type: 'input_text',
-              text: `You are an assistant that extracts structured racing standings from screenshots. Always follow the JSON schema. Ensure numeric fields stay numeric. Required base fields: ${REQUIRED_FIELDS.join(
-                ', '
-              )}.`
+              text: `You are an assistant that extracts structured racing standings from screenshots.
+Return a single JSON object with the following structure:
+${JSON.stringify(schemaDefinition, null, 2)}
+Ensure numeric fields stay numeric. Required base fields: ${REQUIRED_FIELDS.join(', ')}.`
             }
           ]
         },
@@ -104,14 +105,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
             }
           ]
         }
-      ],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'StandingsExtraction',
-          schema: schemaDefinition
-        }
-      }
+      ]
     })
 
     const output = response.output?.[0]
