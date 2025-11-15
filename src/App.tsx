@@ -12,6 +12,7 @@ import AccountSettings from './pages/AccountSettings'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminPanel from './pages/AdminPanel'
+import Standings from './pages/Standings'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import { TrackDataProvider } from './context/TrackDataContext'
@@ -91,6 +92,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <HotlapsAndSetups />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/standings"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Standings />
                   </Layout>
                 </ProtectedRoute>
               }

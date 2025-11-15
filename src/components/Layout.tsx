@@ -10,7 +10,8 @@ import {
   Timer,
   ShieldCheck,
   LogOut,
-  Settings
+  Settings,
+  BarChart3
 } from 'lucide-react'
 import { F125Badge, SimRacingBadge } from './Branding'
 import Button from './Button'
@@ -33,6 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       { path: '/strategies', icon: Navigation2, label: 'Stratégia' },
       { path: '/fuel', icon: Flame, label: 'Fuel Data' },
       { path: '/hotlaps', icon: Timer, label: 'Hotlaps & Setups' },
+      { path: '/standings', icon: BarChart3, label: 'Standings' },
       { path: '/data-entry', icon: PlusCircle, label: 'Adatbevitel' },
       { path: '/account', icon: Settings, label: 'Fiók' }
     ]

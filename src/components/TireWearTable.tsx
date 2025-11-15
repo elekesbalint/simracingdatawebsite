@@ -75,6 +75,7 @@ const TireWearTable: React.FC<TireWearTableProps> = ({ tireData, trackName }) =>
           <thead>
             <tr className="border-b border-f1-light-gray">
               <th className="text-left py-3 px-4 text-f1-text-secondary font-medium">Gumi típusa</th>
+              <th className="text-left py-3 px-4 text-f1-text-secondary font-medium">Alap keverék</th>
               <th className="text-left py-3 px-4 text-f1-text-secondary font-medium">Kopás (%)</th>
             </tr>
           </thead>
@@ -85,6 +86,9 @@ const TireWearTable: React.FC<TireWearTableProps> = ({ tireData, trackName }) =>
                   <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getCompoundBgColor(tire.compound)} ${getCompoundColor(tire.compound)}`}>
                     {tire.compound.toUpperCase()}
                   </div>
+                </td>
+                <td className="py-4 px-4 text-sm text-f1-text-secondary">
+                  {tire.compoundVariant ?? '—'}
                 </td>
                 <td className="py-4 px-4">
                   <div className="flex items-center space-x-2">

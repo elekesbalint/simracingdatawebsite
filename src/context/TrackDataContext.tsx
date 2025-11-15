@@ -22,16 +22,45 @@ interface TrackDataContextValue {
 
 const TrackDataContext = createContext<TrackDataContextValue | undefined>(undefined)
 
+const COMPOUND_INDICES: Record<TireData['compound'], number> = {
+  soft: 0,
+  medium: 1,
+  hard: 2,
+  intermediate: 0,
+  wet: 0
+}
+
+const splitCompoundSet = (value?: string | null): string[] => {
+  if (!value) return []
+  return value
+    .split(/[-•|/]/)
+    .map((token) => token.trim().toUpperCase())
+    .filter(Boolean)
+}
+
+const normalizeTireEntry = (tire: TireData): TireData => {
+  const tokens = splitCompoundSet(tire.compoundSet)
+  const normalizedSet =
+    tokens.length >= 3 ? tokens.slice(0, 3).join('-') : tokens.length > 0 ? tokens.join('-') : tire.compoundSet
+  const rawVariant =
+    typeof tire.compoundVariant === 'string'
+      ? tire.compoundVariant.trim().toUpperCase()
+      : tire.compoundVariant ?? undefined
+  const variantFromSet = tokens[COMPOUND_INDICES[tire.compound] ?? 0]
+  return {
+    ...tire,
+    compoundSet: (normalizedSet && normalizedSet.trim().toUpperCase()) || 'C3-C4-C5',
+    compoundVariant: rawVariant && rawVariant.length ? rawVariant : variantFromSet ?? null
+  }
+}
+
 const createDefaultTrackDataMap = () => {
   const map = new Map<string, TrackData>()
   const baseDate = new Date()
 
   f1Tracks.forEach((track) => {
     const meta = trackMetaData[track.id] || {}
-    const normalizedTires: TireData[] = (tireWearData[track.id] || []).map((tire) => ({
-      ...tire,
-      compoundSet: tire.compoundSet ?? 'C3-C4-C5'
-    }))
+    const normalizedTires: TireData[] = (tireWearData[track.id] || []).map((tire) => normalizeTireEntry(tire))
 
     const strategies: Strategy[] = (defaultTrackStrategies[track.id] || []).map((strategy) => ({
       ...strategy,
@@ -81,10 +110,7 @@ const normalizeTrackData = (entry: Partial<TrackData> & { trackId: string; lastU
       : new Date(entry.lastVisited)
     : base?.lastVisited ?? null
 
-  const tireData: TireData[] = (entry.tireData ?? base?.tireData ?? []).map((tire) => ({
-    ...tire,
-    compoundSet: tire.compoundSet ?? 'C3-C4-C5'
-  }))
+  const tireData: TireData[] = (entry.tireData ?? base?.tireData ?? []).map((tire) => normalizeTireEntry(tire))
 
   const strategies: Strategy[] = (entry.strategies ?? base?.strategies ?? []).map((strategy) =>
     cloneStrategy(strategy)

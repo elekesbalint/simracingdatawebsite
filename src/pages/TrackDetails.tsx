@@ -220,10 +220,8 @@ const TrackDetails: React.FC = () => {
   }, [trackId])
 
   const compoundOptions: TireData['compoundSet'][] = Array.from(
-    new Set<TireData['compoundSet']>(
-      (currentTrackData?.tireData || []).map(
-        (t) => (t.compoundSet ?? 'C3-C4-C5') as TireData['compoundSet']
-      )
+    new Set(
+      (currentTrackData?.tireData || []).map((t) => (t.compoundSet ?? 'C3-C4-C5') as TireData['compoundSet'])
     )
   )
   const activeCompoundSet: TireData['compoundSet'] | null =

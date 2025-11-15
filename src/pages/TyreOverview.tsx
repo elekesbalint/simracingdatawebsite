@@ -10,6 +10,17 @@ import { f1Tracks } from '../data/tracks'
 const TyreOverview: React.FC = () => {
   const { trackData, loading } = useTrackData()
 
+  const splitCompoundSet = React.useCallback((value?: string | null): [string, string, string] => {
+    if (!value) {
+      return ['C3', 'C4', 'C5']
+    }
+    const tokens = value
+      .split(/[-•|/]/)
+      .map((token) => token.trim().toUpperCase())
+      .filter(Boolean)
+    return [tokens[0] ?? 'C3', tokens[1] ?? 'C4', tokens[2] ?? 'C5']
+  }, [])
+
   const trackLabelMap = React.useMemo(() => {
     const map = new Map<string, { name: string; country: string }>()
     f1Tracks.forEach((track) => {
@@ -57,6 +68,7 @@ const TyreOverview: React.FC = () => {
           const medium = entry.tireData.find((tire) => tire.compound === 'medium')
           const hard = entry.tireData.find((tire) => tire.compound === 'hard')
           const compoundSet = soft?.compoundSet || medium?.compoundSet || hard?.compoundSet || 'C3-C4-C5'
+          const [softCompound, mediumCompound, hardCompound] = splitCompoundSet(compoundSet)
           const labels = trackLabelMap.get(entry.trackId)
 
           return (
@@ -81,14 +93,17 @@ const TyreOverview: React.FC = () => {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="space-y-1">
                   <p className="text-xs text-f1-text-secondary uppercase tracking-wide">Soft</p>
+                  <p className="text-xs text-f1-text-secondary">{soft?.compoundVariant ?? softCompound}</p>
                   <p className="text-2xl font-bold text-red-400">{formatWear(soft?.degradation)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-f1-text-secondary uppercase tracking-wide">Medium</p>
+                  <p className="text-xs text-f1-text-secondary">{medium?.compoundVariant ?? mediumCompound}</p>
                   <p className="text-2xl font-bold text-amber-300">{formatWear(medium?.degradation)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-f1-text-secondary uppercase tracking-wide">Hard</p>
+                  <p className="text-xs text-f1-text-secondary">{hard?.compoundVariant ?? hardCompound}</p>
                   <p className="text-2xl font-bold text-white">{formatWear(hard?.degradation)}</p>
                 </div>
               </div>

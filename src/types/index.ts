@@ -19,7 +19,8 @@ export interface StoredFile {
 export interface TireData {
   compound: 'soft' | 'medium' | 'hard' | 'intermediate' | 'wet'
   degradation: number | string | null
-  compoundSet?: 'C1-C2-C3' | 'C2-C3-C4' | 'C3-C4-C5'
+  compoundSet?: string
+  compoundVariant?: string | null
   laps?: number
   temperature?: number
   pressure?: number
@@ -81,6 +82,49 @@ export interface TrackData {
   lastVisited?: Date | null
   hotlaps?: HotlapEntry[]
   setups?: SetupEntry[]
+}
+
+export type SessionType = 'qualifying' | 'race'
+
+export interface PitStopEntry {
+  lap?: number | null
+  fromTyre?: TireData['compound']
+  toTyre?: TireData['compound']
+  fromCompound?: string | null
+  toCompound?: string | null
+}
+
+export interface StandingsEvent {
+  id: string
+  trackId: string
+  league: string
+  round?: string | null
+  season?: string | null
+  telemetryFile?: StoredFile
+  notes?: string | null
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface StandingsResult {
+  id: string
+  eventId: string
+  sessionType: SessionType
+  position: number
+  driver: string
+  team: string
+  tyre?: TireData['compound']
+  tyreCompound?: string | null
+  lapTime?: string | null
+  gap?: string | null
+  startingPosition?: number | null
+  pitStopCount?: number | null
+  pitStops?: PitStopEntry[]
+  bestLap?: string | null
+  finishTime?: string | null
+  points?: number | null
+  notes?: string | null
+  createdAt: string
 }
 
 export type UserStatus = 'pending' | 'approved' | 'rejected'

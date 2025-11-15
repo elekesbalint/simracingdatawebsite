@@ -114,6 +114,8 @@ const HotlapsAndSetups: React.FC = () => {
   const [saving, setSaving] = useState<'hotlap' | 'setup' | 'delete-hotlap' | 'delete-setup' | null>(
     null
   )
+  const [showHotlapForm, setShowHotlapForm] = useState(false)
+  const [showSetupForm, setShowSetupForm] = useState(false)
 
   useEffect(() => {
     if (!selectedTrackId && f1Tracks.length) {
@@ -126,16 +128,30 @@ const HotlapsAndSetups: React.FC = () => {
     setSetupForm(defaultSetupForm)
     setFeedback(null)
     setSaving(null)
+    setShowHotlapForm(false)
+    setShowSetupForm(false)
   }, [selectedTrackId])
 
-  const trackOptions = useMemo(
-    () =>
-      f1Tracks.map((track) => ({
+  const trackOptions = useMemo(() => {
+    return f1Tracks.map((track) => {
+      const entry = trackData.find((data) => data.trackId === track.id)
+      const setupCount = entry?.setups?.length ?? 0
+      const hotlapCount = entry?.hotlaps?.length ?? 0
+
+      const indicators: string[] = []
+      if (setupCount > 0) {
+        indicators.push(`${setupCount} setup`)
+      }
+      if (hotlapCount > 0) {
+        indicators.push(`${hotlapCount} hotlap`)
+      }
+
+      return {
         value: track.id,
-        label: track.name
-      })),
-    []
-  )
+        label: indicators.length > 0 ? `${track.name} • ${indicators.join(' • ')}` : track.name
+      }
+    })
+  }, [trackData])
 
   const currentTrack: Track | undefined = f1Tracks.find((track) => track.id === selectedTrackId)
   const currentEntry = trackData.find((entry) => entry.trackId === selectedTrackId)
@@ -238,6 +254,7 @@ const HotlapsAndSetups: React.FC = () => {
       })
 
       setHotlapForm(defaultHotlapForm)
+      setShowHotlapForm(false)
       setFeedback({ type: 'success', message: 'Hotlap sikeresen mentve.' })
     } catch (error) {
       setFeedback({
@@ -296,6 +313,7 @@ const HotlapsAndSetups: React.FC = () => {
       })
 
       setSetupForm(defaultSetupForm)
+      setShowSetupForm(false)
       setFeedback({ type: 'success', message: 'Setup sikeresen mentve.' })
     } catch (error) {
       setFeedback({
@@ -432,195 +450,154 @@ const HotlapsAndSetups: React.FC = () => {
                 showOverlay={false}
               />
             ) : (
-              <div className="h-48 rounded-2xl border border-dashed border-f1-light-gray/40 flex items-center justify-center text-f1-text-secondary">
+              <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-f1-light-gray/40 text-f1-text-secondary">
                 Válassz pályát a listából
               </div>
             )}
           </div>
 
-          <div className="space-y-8">
+          <div className="flex flex-col justify-between space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-f1-text mb-4 flex items-center space-x-2">
-                <Timer className="h-5 w-5 text-f1-gold" />
-                <span>Új hotlap</span>
-              </h2>
-              <form onSubmit={handleAddHotlap} className="space-y-4">
-                <Input
-                  label="Köridő"
-                  placeholder="Pl. 1:26.745"
-                  value={hotlapForm.lapTime}
-                  onChange={(value) => setHotlapForm((prev) => ({ ...prev, lapTime: value }))}
-                  required
-                />
-
-                <Select
-                  label="Kapcsolódó setup"
-                  options={[{ value: 'none', label: 'Nincs hozzárendelve' }, ...setupOptions]}
-                  value={hotlapForm.linkedSetupId || 'none'}
-                  onChange={(value) =>
-                    setHotlapForm((prev) => ({
-                      ...prev,
-                      linkedSetupId: value === 'none' ? '' : value
-                    }))
-                  }
-                />
-
-                <Input
-                  label="Setup neve / kulcsszavai"
-                  placeholder="Pl. Time Trial • Medium Downforce"
-                  value={hotlapForm.setupName}
-                  onChange={(value) => setHotlapForm((prev) => ({ ...prev, setupName: value }))}
-                />
-
-                <Input
-                  label="Feltöltő neve"
-                  placeholder="Pl. Driver"
-                  value={hotlapForm.createdBy}
-                  onChange={(value) => setHotlapForm((prev) => ({ ...prev, createdBy: value }))}
-                />
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-f1-text">Megjegyzések</label>
-                  <textarea
-                    className="input-field min-h-[120px] resize-y"
-                    placeholder="ERS stratégia, gumihőmérséklet, TC/ABS, stb."
-                    value={hotlapForm.notes}
-                    onChange={(event) =>
-                      setHotlapForm((prev) => ({ ...prev, notes: event.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-f1-text">Hotlap fájl (opcionális)</label>
-                  <input
-                    type="file"
-                    accept=".txt,.pdf,.json,.zip,.csv,.png,.jpg,.jpeg"
-                    onChange={(event) =>
-                      setHotlapForm((prev) => ({
-                        ...prev,
-                        attachment: event.target.files?.[0] ?? null
-                      }))
-                    }
-                    className="block w-full text-sm text-f1-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-f1-light-gray file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-f1-gray transition-colors"
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    variant="gold"
-                    className="inline-flex items-center space-x-2"
-                    disabled={saving === 'hotlap'}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>{saving === 'hotlap' ? 'Mentés...' : 'Hotlap mentése'}</span>
-                  </Button>
-                </div>
-              </form>
+              <h2 className="text-xl font-semibold text-f1-text">Gyors áttekintés</h2>
+              <p className="mt-2 text-sm text-f1-text-secondary">
+                Először tekintsd át az adott pályához tartozó hotlapokat és setupokat. Ha új adatot
+                szeretnél rögzíteni, használd a szekciókban található <q>Új hozzáadás</q> gombokat.
+              </p>
             </div>
 
-            <div>
-              <h2 className="text-xl font-semibold text-f1-text mb-4 flex items-center space-x-2">
-                <Layers className="h-5 w-5 text-f1-gold" />
-                <span>Új setup</span>
-              </h2>
-              <form onSubmit={handleAddSetup} className="space-y-4">
-                <Input
-                  label="Setup neve"
-                  placeholder="Pl. Race • Balanced"
-                  value={setupForm.title}
-                  onChange={(value) => setSetupForm((prev) => ({ ...prev, title: value }))}
-                />
-
-                <Select
-                  label="Kapcsolódó hotlap"
-                  options={[{ value: 'none', label: 'Nincs hozzárendelve' }, ...hotlapOptions]}
-                  value={setupForm.linkedHotlapId || 'none'}
-                  onChange={(value) =>
-                    setSetupForm((prev) => ({
-                      ...prev,
-                      linkedHotlapId: value === 'none' ? '' : value
-                    }))
-                  }
-                />
-
-                <Input
-                  label="Feltöltő neve"
-                  placeholder="Pl. Driver"
-                  value={setupForm.createdBy}
-                  onChange={(value) => setSetupForm((prev) => ({ ...prev, createdBy: value }))}
-                />
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-f1-text">Setup felépítés</label>
-                  <textarea
-                    className="input-field min-h-[160px] font-mono whitespace-pre resize-y"
-                    placeholder="30-15\n100-25\nLLLL\n41-1-1-21-21-40\n100-55\nmax min"
-                    value={setupForm.configuration}
-                    onChange={(event) =>
-                      setSetupForm((prev) => ({ ...prev, configuration: event.target.value }))
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-f1-text">Megjegyzések</label>
-                  <textarea
-                    className="input-field min-h-[120px] resize-y"
-                    placeholder="Plusz részletek, guminyomás, diff értékek stb."
-                    value={setupForm.notes}
-                    onChange={(event) =>
-                      setSetupForm((prev) => ({ ...prev, notes: event.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-f1-text">Setup fájl (opcionális)</label>
-                  <input
-                    type="file"
-                    accept=".txt,.pdf,.json,.zip,.csv"
-                    onChange={(event) =>
-                      setSetupForm((prev) => ({
-                        ...prev,
-                        attachment: event.target.files?.[0] ?? null
-                      }))
-                    }
-                    className="block w-full text-sm text-f1-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-f1-light-gray file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-f1-gray transition-colors"
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    variant="gold"
-                    className="inline-flex items-center space-x-2"
-                    disabled={saving === 'setup'}
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>{saving === 'setup' ? 'Mentés...' : 'Setup mentése'}</span>
-                  </Button>
-                </div>
-              </form>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-f1-light-gray/30 bg-f1-dark/60 p-4">
+                <p className="text-sm text-f1-text-secondary uppercase tracking-wide">
+                  Mentett hotlapok
+                </p>
+                <p className="mt-1 text-3xl font-bold text-f1-text-gold">{hotlaps.length}</p>
+              </div>
+              <div className="rounded-2xl border border-f1-light-gray/30 bg-f1-dark/60 p-4">
+                <p className="text-sm text-f1-text-secondary uppercase tracking-wide">
+                  Mentett setupok
+                </p>
+                <p className="mt-1 text-3xl font-bold text-f1-text-gold">{setups.length}</p>
+              </div>
             </div>
+
+            {currentEntry?.lastUpdated && (
+              <div className="rounded-2xl border border-f1-light-gray/20 bg-f1-dark/40 p-4 text-sm text-f1-text-secondary">
+                Utolsó módosítás:{' '}
+                <span className="font-medium text-f1-text">
+                  {new Date(currentEntry.lastUpdated).toLocaleString('hu-HU')}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </Card>
 
       <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-f1-text flex items-center space-x-2">
-            <Trophy className="h-6 w-6 text-f1-gold" />
-            <span>Mentett hotlapok</span>
-          </h2>
-          {currentTrack && (
-            <span className="text-sm text-f1-text-secondary">
-              {currentTrack.name} • {hotlaps.length} hotlap
-            </span>
-          )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <h2 className="flex items-center space-x-2 text-2xl font-semibold text-f1-text">
+              <Trophy className="h-6 w-6 text-f1-gold" />
+              <span>Mentett hotlapok</span>
+            </h2>
+            {currentTrack && (
+              <span className="text-sm text-f1-text-secondary">
+                {currentTrack.name} • {hotlaps.length} hotlap
+              </span>
+            )}
+          </div>
+          <Button
+            variant={showHotlapForm ? 'outline' : 'gold'}
+            className="w-full sm:w-auto"
+            onClick={() => setShowHotlapForm((prev) => !prev)}
+            disabled={!currentTrack}
+          >
+            <Plus className="h-4 w-4" />
+            <span>{showHotlapForm ? 'Mégse' : 'Új hotlap hozzáadása'}</span>
+          </Button>
         </div>
+
+        {showHotlapForm && currentTrack && (
+          <Card className="space-y-6 border border-f1-gold/30 bg-f1-dark/70 p-6">
+            <h3 className="text-xl font-semibold text-f1-text flex items-center space-x-2">
+              <Timer className="h-5 w-5 text-f1-gold" />
+              <span>Új hotlap rögzítése</span>
+            </h3>
+            <form onSubmit={handleAddHotlap} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label="Köridő"
+                placeholder="Pl. 1:26.745"
+                value={hotlapForm.lapTime}
+                onChange={(value) => setHotlapForm((prev) => ({ ...prev, lapTime: value }))}
+                required
+              />
+
+              <Select
+                label="Kapcsolódó setup"
+                options={[{ value: 'none', label: 'Nincs hozzárendelve' }, ...setupOptions]}
+                value={hotlapForm.linkedSetupId || 'none'}
+                onChange={(value) =>
+                  setHotlapForm((prev) => ({
+                    ...prev,
+                    linkedSetupId: value === 'none' ? '' : value
+                  }))
+                }
+              />
+
+              <Input
+                label="Setup neve / kulcsszavai"
+                placeholder="Pl. Time Trial • Medium Downforce"
+                value={hotlapForm.setupName}
+                onChange={(value) => setHotlapForm((prev) => ({ ...prev, setupName: value }))}
+              />
+
+              <Input
+                label="Feltöltő neve"
+                placeholder="Pl. Driver"
+                value={hotlapForm.createdBy}
+                onChange={(value) => setHotlapForm((prev) => ({ ...prev, createdBy: value }))}
+              />
+
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-f1-text">Megjegyzések</label>
+                <textarea
+                  className="input-field mt-2 min-h-[120px] resize-y"
+                  placeholder="ERS stratégia, gumihőmérséklet, TC/ABS, stb."
+                  value={hotlapForm.notes}
+                  onChange={(event) =>
+                    setHotlapForm((prev) => ({ ...prev, notes: event.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-medium text-f1-text">Hotlap fájl (opcionális)</label>
+                <input
+                  type="file"
+                  accept=".txt,.pdf,.json,.zip,.csv,.png,.jpg,.jpeg"
+                  onChange={(event) =>
+                    setHotlapForm((prev) => ({
+                      ...prev,
+                      attachment: event.target.files?.[0] ?? null
+                    }))
+                  }
+                  className="block w-full text-sm text-f1-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-f1-light-gray file:px-3 file:py-2 file:text-sm file:font-medium transition-colors hover:file:bg-f1-gray"
+                />
+              </div>
+
+              <div className="md:col-span-2 flex justify-end">
+                <Button
+                  type="submit"
+                  variant="gold"
+                  className="inline-flex items-center space-x-2"
+                  disabled={saving === 'hotlap'}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>{saving === 'hotlap' ? 'Mentés...' : 'Hotlap mentése'}</span>
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
 
         {currentTrack ? (
           hotlaps.length > 0 ? (
@@ -736,17 +713,116 @@ const HotlapsAndSetups: React.FC = () => {
       </section>
 
       <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-f1-text flex items-center space-x-2">
-            <Layers className="h-6 w-6 text-f1-gold" />
-            <span>Mentett setupok</span>
-          </h2>
-          {currentTrack && (
-            <span className="text-sm text-f1-text-secondary">
-              {currentTrack.name} • {setups.length} setup
-            </span>
-          )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <h2 className="flex items-center space-x-2 text-2xl font-semibold text-f1-text">
+              <Layers className="h-6 w-6 text-f1-gold" />
+              <span>Mentett setupok</span>
+            </h2>
+            {currentTrack && (
+              <span className="text-sm text-f1-text-secondary">
+                {currentTrack.name} • {setups.length} setup
+              </span>
+            )}
+          </div>
+          <Button
+            variant={showSetupForm ? 'outline' : 'gold'}
+            className="w-full sm:w-auto"
+            onClick={() => setShowSetupForm((prev) => !prev)}
+            disabled={!currentTrack}
+          >
+            <Plus className="h-4 w-4" />
+            <span>{showSetupForm ? 'Mégse' : 'Új setup hozzáadása'}</span>
+          </Button>
         </div>
+
+        {showSetupForm && currentTrack && (
+          <Card className="space-y-6 border border-f1-gold/30 bg-f1-dark/70 p-6">
+            <h3 className="text-xl font-semibold text-f1-text flex items-center space-x-2">
+              <Layers className="h-5 w-5 text-f1-gold" />
+              <span>Új setup rögzítése</span>
+            </h3>
+            <form onSubmit={handleAddSetup} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label="Setup neve"
+                placeholder="Pl. Race • Balanced"
+                value={setupForm.title}
+                onChange={(value) => setSetupForm((prev) => ({ ...prev, title: value }))}
+              />
+
+              <Select
+                label="Kapcsolódó hotlap"
+                options={[{ value: 'none', label: 'Nincs hozzárendelve' }, ...hotlapOptions]}
+                value={setupForm.linkedHotlapId || 'none'}
+                onChange={(value) =>
+                  setSetupForm((prev) => ({
+                    ...prev,
+                    linkedHotlapId: value === 'none' ? '' : value
+                  }))
+                }
+              />
+
+              <Input
+                label="Feltöltő neve"
+                placeholder="Pl. Driver"
+                value={setupForm.createdBy}
+                onChange={(value) => setSetupForm((prev) => ({ ...prev, createdBy: value }))}
+              />
+
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-f1-text">Setup felépítés</label>
+                <textarea
+                  className="input-field mt-2 min-h-[160px] resize-y whitespace-pre font-mono"
+                  placeholder="30-15\n100-25\nLLLL\n41-1-1-21-21-40\n100-55\nmax min"
+                  value={setupForm.configuration}
+                  onChange={(event) =>
+                    setSetupForm((prev) => ({ ...prev, configuration: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-f1-text">Megjegyzések</label>
+                <textarea
+                  className="input-field mt-2 min-h-[120px] resize-y"
+                  placeholder="Plusz részletek, guminyomás, diff értékek stb."
+                  value={setupForm.notes}
+                  onChange={(event) =>
+                    setSetupForm((prev) => ({ ...prev, notes: event.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-medium text-f1-text">Setup fájl (opcionális)</label>
+                <input
+                  type="file"
+                  accept=".txt,.pdf,.json,.zip,.csv"
+                  onChange={(event) =>
+                    setSetupForm((prev) => ({
+                      ...prev,
+                      attachment: event.target.files?.[0] ?? null
+                    }))
+                  }
+                  className="block w-full text-sm text-f1-text-secondary file:mr-3 file:rounded-md file:border-0 file:bg-f1-light-gray file:px-3 file:py-2 file:text-sm file:font-medium transition-colors hover:file:bg-f1-gray"
+                />
+              </div>
+
+              <div className="md:col-span-2 flex justify-end">
+                <Button
+                  type="submit"
+                  variant="gold"
+                  className="inline-flex items-center space-x-2"
+                  disabled={saving === 'setup'}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>{saving === 'setup' ? 'Mentés...' : 'Setup mentése'}</span>
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
 
         {currentTrack ? (
           setups.length > 0 ? (

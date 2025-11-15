@@ -1,10 +1,19 @@
 import { TireData } from '../types'
 
-const withCompounds = (soft: string, medium: string, hard: string): TireData[] => [
-  { compound: 'soft', degradation: soft, compoundSet: 'C3-C4-C5' },
-  { compound: 'medium', degradation: medium, compoundSet: 'C3-C4-C5' },
-  { compound: 'hard', degradation: hard, compoundSet: 'C3-C4-C5' }
-]
+const withCompounds = (
+  soft: string,
+  medium: string,
+  hard: string,
+  variants: [string, string, string] = ['C3', 'C4', 'C5']
+): TireData[] => {
+  const [softVariant, mediumVariant, hardVariant] = variants.map((value) => value.toUpperCase())
+  const compoundSet = `${softVariant}-${mediumVariant}-${hardVariant}`
+  return [
+    { compound: 'soft', degradation: soft, compoundSet, compoundVariant: softVariant },
+    { compound: 'medium', degradation: medium, compoundSet, compoundVariant: mediumVariant },
+    { compound: 'hard', degradation: hard, compoundSet, compoundVariant: hardVariant }
+  ]
+}
 
 export const tireWearData: Record<string, TireData[]> = {
   'australia': withCompounds('8%', '6%', '4%'),

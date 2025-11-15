@@ -58,6 +58,7 @@ const mapRowToAuthUser = (row: any): AuthUser => ({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<AuthUser[]>([])
   const [loading, setLoading] = useState<boolean>(true)
+  const [usersReady, setUsersReady] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
     if (typeof window === 'undefined') {
       return null
@@ -133,10 +134,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isSupabaseConfigured) {
       setUsers([])
       setLoading(false)
+      setUsersReady(true)
       return
     }
 
     setLoading(true)
+    setUsersReady(false)
     const { data, error } = await supabase
       .from('auth_users')
       .select('*')
@@ -149,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUsers(data.map(mapRowToAuthUser))
     }
     setLoading(false)
+    setUsersReady(true)
   }, [])
 
   useEffect(() => {
@@ -167,7 +171,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [ensureDefaultAdminExists, loadUsers])
 
   useEffect(() => {
-    if (!currentUserId) return
+    if (!usersReady || !currentUserId) {
+      return
+    }
     const user = users.find((u) => u.id === currentUserId)
     if (!user || user.status !== 'approved') {
       setCurrentUserId(null)
@@ -175,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.localStorage.removeItem(CURRENT_USER_KEY)
       }
     }
-  }, [currentUserId, users])
+  }, [currentUserId, users, usersReady])
 
   const [pendingTwoFactor, setPendingTwoFactor] = useState<{
     email: string

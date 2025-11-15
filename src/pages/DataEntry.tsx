@@ -29,7 +29,9 @@ const DataEntry: React.FC = () => {
   // Form states
   const [selectedTrack, setSelectedTrack] = useState('')
   const initialTireForm = {
-    compoundSet: 'C3-C4-C5',
+    softCompound: 'C3',
+    mediumCompound: 'C4',
+    hardCompound: 'C5',
     soft: '',
     medium: '',
     hard: ''
@@ -56,11 +58,30 @@ const DataEntry: React.FC = () => {
     label: track.name
   }))
 
-  const compoundSetOptions = [
-    { value: 'C1-C2-C3', label: 'C1 • C2 • C3' },
-    { value: 'C2-C3-C4', label: 'C2 • C3 • C4' },
-    { value: 'C3-C4-C5', label: 'C3 • C4 • C5' }
-  ]
+  const normalizeCompoundInput = (value: string) => value.trim().toUpperCase()
+
+  const buildCompoundSet = (soft: string, medium: string, hard: string) => {
+    const values = [soft, medium, hard].map((item) => item.trim().toUpperCase()).filter(Boolean)
+    if (values.length === 3) {
+      return values.join('-')
+    }
+    return values.join('-') || 'CUSTOM'
+  }
+
+  const parseCompoundValues = (compoundSet?: string | null): [string, string, string] => {
+    if (!compoundSet) {
+      return ['C3', 'C4', 'C5']
+    }
+    const tokens = compoundSet
+      .split(/[-•|/]/)
+      .map((token) => token.trim().toUpperCase())
+      .filter(Boolean)
+    return [
+      tokens[0] ?? 'C3',
+      tokens[1] ?? 'C4',
+      tokens[2] ?? 'C5'
+    ]
+  }
 
   const handleTireSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,23 +96,34 @@ const DataEntry: React.FC = () => {
     }
 
     const normalize = (value: string) => value.trim()
-    const compoundSet = tireForm.compoundSet as TireData['compoundSet']
+    const softCompound = normalizeCompoundInput(tireForm.softCompound)
+    const mediumCompound = normalizeCompoundInput(tireForm.mediumCompound)
+    const hardCompound = normalizeCompoundInput(tireForm.hardCompound)
+
+    if (!softCompound || !mediumCompound || !hardCompound) {
+      return
+    }
+
+    const compoundSet = buildCompoundSet(softCompound, mediumCompound, hardCompound) as TireData['compoundSet']
 
     const newTireData: TireData[] = [
       {
         compound: 'soft',
         degradation: normalize(softWear),
-        compoundSet
+        compoundSet,
+        compoundVariant: softCompound
       },
       {
         compound: 'medium',
         degradation: normalize(mediumWear),
-        compoundSet
+        compoundSet,
+        compoundVariant: mediumCompound
       },
       {
         compound: 'hard',
         degradation: normalize(hardWear),
-        compoundSet
+        compoundSet,
+        compoundVariant: hardCompound
       }
     ]
 
@@ -205,7 +237,7 @@ const DataEntry: React.FC = () => {
 
   useEffect(() => {
     if (!selectedTrack) {
-      setTireForm(initialTireForm)
+    setTireForm(initialTireForm)
       setLapForm({ bestLap: '', averageLap: '', notes: '' })
       return
     }
@@ -227,8 +259,14 @@ const DataEntry: React.FC = () => {
       return value
     }
 
+    const [defaultSoft, defaultMedium, defaultHard] = parseCompoundValues(
+      soft?.compoundSet || medium?.compoundSet || hard?.compoundSet
+    )
+
     setTireForm({
-      compoundSet: (soft?.compoundSet || medium?.compoundSet || hard?.compoundSet || 'C3-C4-C5'),
+      softCompound: soft?.compoundVariant || defaultSoft,
+      mediumCompound: medium?.compoundVariant || defaultMedium,
+      hardCompound: hard?.compoundVariant || defaultHard,
       soft: toInput(soft?.degradation),
       medium: toInput(medium?.degradation),
       hard: toInput(hard?.degradation)
@@ -333,13 +371,43 @@ const DataEntry: React.FC = () => {
                 <form onSubmit={handleTireSubmit} className="space-y-6">
                   <h3 className="text-xl font-bold text-f1-text mb-6">Gumikopás adatok hozzáadása</h3>
 
-                  <Select
-                    label="Gumikeverék"
-                    options={compoundSetOptions}
-                    value={tireForm.compoundSet}
-                    onChange={(value) => setTireForm({ ...tireForm, compoundSet: value })}
-                    required
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Input
+                      label="Soft compound"
+                      type="text"
+                      value={tireForm.softCompound}
+                      onChange={(value) =>
+                        setTireForm({ ...tireForm, softCompound: normalizeCompoundInput(value) })
+                      }
+                      placeholder="Pl. C3"
+                      required
+                    />
+
+                    <Input
+                      label="Medium compound"
+                      type="text"
+                      value={tireForm.mediumCompound}
+                      onChange={(value) =>
+                        setTireForm({
+                          ...tireForm,
+                          mediumCompound: normalizeCompoundInput(value)
+                        })
+                      }
+                      placeholder="Pl. C4"
+                      required
+                    />
+
+                    <Input
+                      label="Hard compound"
+                      type="text"
+                      value={tireForm.hardCompound}
+                      onChange={(value) =>
+                        setTireForm({ ...tireForm, hardCompound: normalizeCompoundInput(value) })
+                      }
+                      placeholder="Pl. C5"
+                      required
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Input
