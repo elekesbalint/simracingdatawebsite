@@ -26,6 +26,7 @@ const schemaDefinition = {
           finishTime: { type: ['string', 'null'] },
           points: { type: ['integer', 'null'] }
         },
+        required: ['position', 'driver', 'team'],
         additionalProperties: false
       }
     },
